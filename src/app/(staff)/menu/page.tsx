@@ -106,12 +106,12 @@ export default function MenuPage() {
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, available: !i.available } : i)));
   };
 
-  if (loading || !staff) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  if (loading || !staff) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Menu Items</h1>
+        <h1 className="text-2xl font-bold text-zinc-800">Menu Items</h1>
         <button
           onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
           className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
@@ -122,22 +122,22 @@ export default function MenuPage() {
 
       {showForm && (
         <div className="bg-white border border-zinc-200 rounded-2xl p-6 mb-6 space-y-4">
-          <h2 className="font-semibold">{editingId ? "Edit Item" : "Item Baru"}</h2>
+          <h2 className="font-semibold text-zinc-800">{editingId ? "Edit Item" : "Item Baru"}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Nama</label>
+              <label className="block text-sm font-medium text-zinc-800 mb-1">Nama</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Harga (Rp)</label>
+              <label className="block text-sm font-medium text-zinc-800 mb-1">Harga (Rp)</label>
               <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Deskripsi</label>
+              <label className="block text-sm font-medium text-zinc-800 mb-1">Deskripsi</label>
               <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Kategori</label>
+              <label className="block text-sm font-medium text-zinc-800 mb-1">Kategori</label>
               <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm">
                 <option value="">Pilih kategori</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -145,11 +145,11 @@ export default function MenuPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Stock</label>
+                <label className="block text-sm font-medium text-zinc-800 mb-1">Stock</label>
                 <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" placeholder="Kosongkan = unlimited" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Min. Stock Alert</label>
+                <label className="block text-sm font-medium text-zinc-800 mb-1">Min. Stock Alert</label>
                 <input type="number" value={form.lowStockAt} onChange={(e) => setForm({ ...form, lowStockAt: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
               </div>
             </div>
@@ -158,7 +158,7 @@ export default function MenuPage() {
             <button onClick={handleSave} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700">
               {editingId ? "Simpan" : "Tambah"}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-600">Batal</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800">Batal</button>
           </div>
         </div>
       )}
@@ -167,24 +167,24 @@ export default function MenuPage() {
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 border-b border-zinc-200">
             <tr>
-              <th className="text-left px-4 py-3 font-semibold text-zinc-700">Nama</th>
-              <th className="text-left px-4 py-3 font-semibold text-zinc-700">Kategori</th>
-              <th className="text-right px-4 py-3 font-semibold text-zinc-700">Harga</th>
-              <th className="text-center px-4 py-3 font-semibold text-zinc-700">Stock</th>
-              <th className="text-center px-4 py-3 font-semibold text-zinc-700">Tersedia</th>
-              <th className="text-right px-4 py-3 font-semibold text-zinc-700">Aksi</th>
+              <th className="text-left px-4 py-3 font-semibold text-zinc-800">Nama</th>
+              <th className="text-left px-4 py-3 font-semibold text-zinc-800">Kategori</th>
+              <th className="text-right px-4 py-3 font-semibold text-zinc-800">Harga</th>
+              <th className="text-center px-4 py-3 font-semibold text-zinc-800">Stock</th>
+              <th className="text-center px-4 py-3 font-semibold text-zinc-800">Tersedia</th>
+              <th className="text-right px-4 py-3 font-semibold text-zinc-800">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-zinc-50">
-                <td className="px-4 py-3 font-medium">{item.name}</td>
-                <td className="px-4 py-3 text-zinc-500">{item.category.name}</td>
-                <td className="px-4 py-3 text-right font-mono">Rp {item.price.toLocaleString("id-ID")}</td>
+                <td className="px-4 py-3 font-medium text-zinc-800">{item.name}</td>
+                <td className="px-4 py-3 text-zinc-800">{item.category.name}</td>
+                <td className="px-4 py-3 text-right font-mono text-zinc-800">Rp {item.price.toLocaleString("id-ID")}</td>
                 <td className="px-4 py-3 text-center">
                   {item.stock !== null ? (
-                    <span className={item.stock <= (item.lowStockAt || 0) ? "text-red-600 font-semibold" : "text-zinc-600"}>{item.stock}</span>
-                  ) : <span className="text-zinc-400">∞</span>}
+                    <span className={item.stock <= (item.lowStockAt || 0) ? "text-red-600 font-semibold" : "text-zinc-800"}>{item.stock}</span>
+                  ) : <span className="text-zinc-800">∞</span>}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button

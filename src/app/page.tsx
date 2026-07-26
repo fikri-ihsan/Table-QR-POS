@@ -7,8 +7,8 @@ export default function Home() {
         <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-violet-600 flex items-center justify-center">
           <span className="text-white font-bold text-xl">S</span>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight mb-2">Saji POS</h1>
-        <p className="text-zinc-700 mb-8">
+        <h1 className="text-4xl font-bold tracking-tight mb-2 text-zinc-800">Saji POS</h1>
+        <p className="text-zinc-800 mb-8">
           Sistem Point of Sale untuk cafe dan restoran.
           Self-order via QR, kitchen display real-time, dan manajemen lengkap.
         </p>

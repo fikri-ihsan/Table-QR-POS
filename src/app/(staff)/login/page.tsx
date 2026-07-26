@@ -32,32 +32,32 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Saji POS</h1>
-          <p className="text-sm text-zinc-600 mt-1">Masuk ke panel staff</p>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-800">Saji POS</h1>
+          <p className="text-sm text-zinc-800 mt-1">Masuk ke panel staff</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-zinc-700 mb-1">Nama Staff</label>
+            <label htmlFor="name" className="block text-sm font-medium text-zinc-800 mb-1">Nama Staff</label>
             <input
               id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-400 bg-white text-zinc-800 text-sm placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-400 bg-white text-zinc-800 text-sm placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
               placeholder="cth: Admin, Kasir"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-700 mb-1">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-zinc-800 mb-1">Password</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-400 bg-white text-zinc-800 text-sm placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-400 bg-white text-zinc-800 text-sm placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
               placeholder="Masukkan password"
               required
             />
