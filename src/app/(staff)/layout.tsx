@@ -77,7 +77,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav className="flex-1 p-2 space-y-0.5">
-          {navItems.map((item) => (
+          {navItems
+            .filter((item) => item.href !== "/staff" || staff?.role === "admin")
+            .map((item) => (
             <Link
               key={item.href}
               href={item.href}

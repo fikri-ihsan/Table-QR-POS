@@ -28,7 +28,7 @@ model Staff {
   outletId  String
   outlet    Outlet   @relation(fields: [outletId], references: [id])
   name      String
-  pin       String   // hashed password
+  password  String
   role      String   // "admin" | "cashier" | "kitchen"
   active    Boolean  @default(true)
   createdAt DateTime @default(now())

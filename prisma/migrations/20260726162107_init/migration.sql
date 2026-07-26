@@ -12,7 +12,7 @@ CREATE TABLE "Staff" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "outletId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "pin" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

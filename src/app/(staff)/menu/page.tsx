@@ -45,17 +45,22 @@ export default function MenuPage() {
 
   useEffect(() => {
     if (!staff) return;
-    Promise.all([
-      fetch("/api/categories").then((r) => r.json()),
-      fetch("/api/menu").then((r) => r.json()),
-    ]).then(([cats, items]) => {
-      setCategories(cats);
-      setItems(items);
-      setLoading(false);
-    });
+    if (staff.role !== "admin") {
+      fetch("/api/menu").then((r) => r.json()).then(setItems).then(() => setLoading(false));
+    } else {
+      Promise.all([
+        fetch("/api/categories").then((r) => r.json()),
+        fetch("/api/menu").then((r) => r.json()),
+      ]).then(([cats, items]) => {
+        setCategories(cats);
+        setItems(items);
+        setLoading(false);
+      });
+    }
   }, [staff]);
 
   const handleSave = async () => {
+    if (staff?.role !== "admin") return;
     const payload = {
       name: form.name,
       description: form.description || null,
@@ -112,12 +117,14 @@ export default function MenuPage() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-zinc-800">Menu Items</h1>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
-          className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
-        >
-          + Tambah Item
-        </button>
+        {staff?.role === "admin" && (
+          <button
+            onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
+            className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
+          >
+            + Tambah Item
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -195,8 +202,12 @@ export default function MenuPage() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-2">Edit</button>
-                  <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                  {staff?.role === "admin" ? (
+                    <>
+                      <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-2">Edit</button>
+                      <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                    </>
+                  ) : <span className="text-zinc-300 text-xs">-</span>}
                 </td>
               </tr>
             ))}

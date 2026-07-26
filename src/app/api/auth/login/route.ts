@@ -1,19 +1,23 @@
 import { prisma } from "@/lib/db";
-import { signToken } from "@/lib/auth";
+import { signToken, verifyPassword } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-// ponytail: PINs stored as plain text in dev. Hash with bcrypt before production.
 export async function POST(req: Request) {
   try {
-    const { name, pin } = await req.json();
+    const { name, password } = await req.json();
 
     const staff = await prisma.staff.findFirst({
-      where: { name, pin, active: true },
+      where: { name, active: true },
     });
 
     if (!staff) {
-      return NextResponse.json({ error: "Nama atau PIN salah" }, { status: 401 });
+      return NextResponse.json({ error: "Nama atau password salah" }, { status: 401 });
+    }
+
+    const valid = await verifyPassword(password, staff.password);
+    if (!valid) {
+      return NextResponse.json({ error: "Nama atau password salah" }, { status: 401 });
     }
 
     const token = await signToken({
@@ -29,7 +33,7 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 12, // 12h
+      maxAge: 60 * 60 * 12,
     });
 
     return NextResponse.json({ success: true });

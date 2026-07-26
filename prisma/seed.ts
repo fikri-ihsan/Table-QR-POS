@@ -1,9 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create outlet
   const outlet = await prisma.outlet.create({
     data: {
       name: "Saji Coffee & Eatery",
@@ -12,7 +12,6 @@ async function main() {
     },
   });
 
-  // Create categories
   const kategoryKopi = await prisma.category.create({
     data: { outletId: outlet.id, name: "Kopi", sortOrder: 1 },
   });
@@ -26,7 +25,6 @@ async function main() {
     data: { outletId: outlet.id, name: "Minuman", sortOrder: 4 },
   });
 
-  // Create menu items
   const menuItems = [
     { categoryId: kategoryKopi.id, name: "Es Kopi Susu Aren", price: 28000, desc: "Espresso blend dengan susu segar & sirup aren murni", stock: 50, lowStockAt: 10 },
     { categoryId: kategoryKopi.id, name: "Cafe Latte", price: 32000, desc: "Double espresso shot dengan microfoam milk lembut", stock: null, lowStockAt: null },
@@ -58,7 +56,6 @@ async function main() {
     });
   }
 
-  // Create tables
   for (let i = 1; i <= 8; i++) {
     await prisma.table.create({
       data: {
@@ -69,32 +66,19 @@ async function main() {
     });
   }
 
-  // Create staff
+  const password = await bcrypt.hash("123456", 12);
   await prisma.staff.create({
-    data: {
-      outletId: outlet.id,
-      name: "Admin",
-      pin: "123456",
-      role: "admin",
-    },
+    data: { outletId: outlet.id, name: "Admin", password, role: "admin" },
   });
 
+  const passwordKasir = await bcrypt.hash("111111", 12);
   await prisma.staff.create({
-    data: {
-      outletId: outlet.id,
-      name: "Kasir",
-      pin: "111111",
-      role: "cashier",
-    },
+    data: { outletId: outlet.id, name: "Kasir", password: passwordKasir, role: "cashier" },
   });
 
+  const passwordDapur = await bcrypt.hash("222222", 12);
   await prisma.staff.create({
-    data: {
-      outletId: outlet.id,
-      name: "Dapur",
-      pin: "222222",
-      role: "kitchen",
-    },
+    data: { outletId: outlet.id, name: "Dapur", password: passwordDapur, role: "kitchen" },
   });
 
   console.log("✅ Seed selesai!");

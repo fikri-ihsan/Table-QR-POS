@@ -10,7 +10,7 @@ export default function StaffPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", pin: "", role: "cashier" });
+  const [form, setForm] = useState({ name: "", password: "", role: "cashier" });
 
   useEffect(() => {
     fetch("/api/auth/me").then(async (res) => {
@@ -27,10 +27,10 @@ export default function StaffPage() {
     await fetch("/api/staff", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ name: form.name, password: form.password, role: form.role }),
     });
     setShowForm(false);
-    setForm({ name: "", pin: "", role: "cashier" });
+    setForm({ name: "", password: "", role: "cashier" });
     const r = await fetch("/api/staff");
     setStaffList(await r.json());
   };
@@ -47,7 +47,7 @@ export default function StaffPage() {
       {showForm && (
         <div className="bg-white border border-zinc-200 rounded-2xl p-4 mb-6 flex gap-3 items-end">
           <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm w-40" /></div>
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Password</label><input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm w-32" /></div>
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Password</label><input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm w-32" /></div>
           <div><label className="text-xs font-medium text-zinc-700 block mb-1">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm">
             <option value="cashier">Kasir</option><option value="kitchen">Dapur</option><option value="admin">Admin</option>
           </select></div>

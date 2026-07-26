@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, hashPassword } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-export async function GET() {
+async function getStaff() {
   const cookieStore = await cookies();
-  const staff = await verifyToken(cookieStore.get("token")?.value || "");
+  return verifyToken(cookieStore.get("token")?.value || "");
+}
+
+export async function GET() {
+  const staff = await getStaff();
   if (!staff || staff.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const staffList = await prisma.staff.findMany({
@@ -18,16 +22,17 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies();
-  const staff = await verifyToken(cookieStore.get("token")?.value || "");
+  const staff = await getStaff();
   if (!staff || staff.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
+  const hashed = await hashPassword(body.password);
+
   const newStaff = await prisma.staff.create({
     data: {
       outletId: staff.outletId,
       name: body.name,
-      pin: body.pin,
+      password: hashed,
       role: body.role || "cashier",
     },
   });
@@ -36,15 +41,19 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const cookieStore = await cookies();
-  const current = await verifyToken(cookieStore.get("token")?.value || "");
+  const current = await getStaff();
   if (!current || current.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const staff = await prisma.staff.update({
+  const data: Record<string, unknown> = {};
+  if (body.password) data.password = await hashPassword(body.password);
+  if (body.role) data.role = body.role;
+  if (body.active !== undefined) data.active = body.active;
+
+  const updated = await prisma.staff.update({
     where: { id: body.id },
-    data: { pin: body.pin, role: body.role, active: body.active },
+    data,
   });
 
-  return NextResponse.json({ id: staff.id, name: staff.name, role: staff.role, active: staff.active });
+  return NextResponse.json({ id: updated.id, name: updated.name, role: updated.role, active: updated.active });
 }

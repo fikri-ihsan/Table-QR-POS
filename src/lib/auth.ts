@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
+import bcrypt from "bcryptjs";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret-min-32-chars-long!!");
 
@@ -26,8 +27,10 @@ export async function verifyToken(token: string): Promise<StaffPayload | null> {
   }
 }
 
-export function requireRole(...roles: string[]) {
-  return (staff: { role: string }) => {
-    if (!roles.includes(staff.role)) throw new Error("Forbidden");
-  };
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }
