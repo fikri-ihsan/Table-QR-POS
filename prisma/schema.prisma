@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ponytail: SQLite single-file. Swap to PostgreSQL when multi-server writes needed.
+
+model Outlet {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  tables     Table[]
+  staff      Staff[]
+  menuItems  MenuItem[]
+  orders     Order[]
+  categories Category[]
+}
+
+model Staff {
+  id        String   @id @default(cuid())
+  outletId  String
+  outlet    Outlet   @relation(fields: [outletId], references: [id])
+  name      String
+  pin       String   // hashed password
+  role      String   // "admin" | "cashier" | "kitchen"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  orders Order[]
+
+  @@index([outletId])
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  outletId  String
+  outlet    Outlet     @relation(fields: [outletId], references: [id])
+  name      String
+  sortOrder Int        @default(0)
+
+  items MenuItem[]
+
+  @@index([outletId])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  outletId    String
+  outlet      Outlet   @relation(fields: [outletId], references: [id])
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?
+  price       Int      // IDR, no decimals
+  image       String?  // URL or path
+  available   Boolean  @default(true)
+  stock       Int?     // null = unlimited
+  lowStockAt  Int?     // alert threshold
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([outletId])
+  @@index([categoryId])
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  outletId  String
+  outlet    Outlet   @relation(fields: [outletId], references: [id])
+  number    Int
+  capacity  Int      @default(4)
+  status    String   @default("available") // "available" | "occupied"
+  qrCode    String?  // stored QR data/URL
+  createdAt DateTime @default(now())
+
+  orders Order[]
+
+  @@unique([outletId, number])
+  @@index([outletId])
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  outletId      String
+  outlet        Outlet   @relation(fields: [outletId], references: [id])
+  tableId       String?
+  table         Table?   @relation(fields: [tableId], references: [id])
+  staffId       String?  // null = customer self-order
+  staff         Staff?   @relation(fields: [staffId], references: [id])
+  orderNumber   Int      // auto-increment per outlet per day
+  status        String   @default("received") // received | preparing | ready | delivered | cancelled
+  type          String   @default("dine_in")  // dine_in | takeaway
+  subtotal      Int
+  tax           Int      @default(0)
+  total         Int
+  paymentStatus String   @default("pending") // pending | paid | failed | refunded
+  paymentMethod String?  // qris | ewallet | va | card | cash
+  midtransId    String?  // Midtrans transaction ID
+  midtransToken String?  // Snap token
+  customerName  String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([outletId])
+  @@index([tableId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int
+  price      Int      // snapshot at order time
+  notes      String?
+}
