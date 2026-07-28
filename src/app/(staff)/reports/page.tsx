@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 type Report = {
   totalRevenue: number;
@@ -12,18 +13,18 @@ type Report = {
 };
 
 export default function ReportsPage() {
+  const { staff, loading: authLoading } = useAuth();
   const router = useRouter();
   const [report, setReport] = useState<Report | null>(null);
   const [range, setRange] = useState("daily");
 
   useEffect(() => {
-    fetch("/api/auth/me").then(async (res) => {
-      if (!res.ok) return router.push("/login");
-      fetch(`/api/reports?type=${range}`)
-        .then((r) => r.json())
-        .then(setReport);
-    });
-  }, [router, range]);
+    if (!staff) return;
+    if (staff.role !== "admin") { router.push("/pos"); return; }
+    fetch(`/api/reports?type=${range}`)
+      .then((r) => r.json())
+      .then(setReport);
+  }, [staff, range]);
 
   if (!report) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
 

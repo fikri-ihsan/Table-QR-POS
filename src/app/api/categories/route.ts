@@ -6,8 +6,8 @@ import { cookies } from "next/headers";
 export async function GET() {
   const cookieStore = await cookies();
   const staff = await verifyToken(cookieStore.get("token")?.value || "");
-  if (!staff || staff.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!staff) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const categories = await prisma.category.findMany({

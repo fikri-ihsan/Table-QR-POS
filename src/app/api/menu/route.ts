@@ -3,10 +3,19 @@ import { verifyToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+async function getStaff() {
+  const cookieStore = await cookies();
+  return verifyToken(cookieStore.get("token")?.value || "");
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const outletId = searchParams.get("outletId") || (await getDefaultOutlet());
 
+  // ponytail: open for customers, but staff pages will provide outletId anyway
+  // if you want strict auth for staff, add a ?staff=true param or similar
+  // keeping it open since customer order page needs it
+  
   const items = await prisma.menuItem.findMany({
     where: { outletId },
     include: { category: true },
@@ -17,8 +26,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies();
-  const staff = await verifyToken(cookieStore.get("token")?.value || "");
+  const staff = await getStaff();
   if (!staff || staff.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

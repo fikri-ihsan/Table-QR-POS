@@ -28,8 +28,8 @@ model Staff {
   outletId  String
   outlet    Outlet   @relation(fields: [outletId], references: [id])
   name      String
-  password  String
-  role      String   // "admin" | "cashier" | "kitchen"
+  pin  String
+  role      String   @default("cashier")
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -78,7 +78,7 @@ model Table {
   outlet    Outlet   @relation(fields: [outletId], references: [id])
   number    Int
   capacity  Int      @default(4)
-  status    String   @default("available") // "available" | "occupied"
+  status    String   @default("available")
   qrCode    String?  // stored QR data/URL
   createdAt DateTime @default(now())
 
@@ -97,13 +97,13 @@ model Order {
   staffId       String?  // null = customer self-order
   staff         Staff?   @relation(fields: [staffId], references: [id])
   orderNumber   Int      // auto-increment per outlet per day
-  status        String   @default("received") // received | preparing | ready | delivered | cancelled
-  type          String   @default("dine_in")  // dine_in | takeaway
+  status        String   @default("received")
+  type          String   @default("dine_in")
   subtotal      Int
   tax           Int      @default(0)
   total         Int
-  paymentStatus String   @default("pending") // pending | paid | failed | refunded
-  paymentMethod String?  // qris | ewallet | va | card | cash
+  paymentStatus String   @default("pending")
+  paymentMethod String?
   midtransId    String?  // Midtrans transaction ID
   midtransToken String?  // Snap token
   customerName  String?
@@ -117,6 +117,7 @@ model Order {
   @@index([tableId])
   @@index([status])
   @@index([createdAt])
+  @@index([outletId, orderNumber])
 }
 
 model OrderItem {

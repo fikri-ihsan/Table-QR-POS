@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 type Staff = { id: string; outletId: string; name: string; role: string };
 type OrderItem = { id: string; menuItem: { name: string }; quantity: number; notes: string | null };
@@ -18,19 +18,10 @@ const statusLabels: Record<string, string> = {
 const statusFlow = ["received", "preparing", "ready", "delivered"];
 
 export default function KitchenPage() {
-  const router = useRouter();
-  const [staff, setStaff] = useState<Staff | null>(null);
+  const { staff, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isDark, setIsDark] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/me").then(async (res) => {
-      if (!res.ok) return router.push("/login");
-      const s = await res.json();
-      setStaff(s);
-    });
-  }, [router]);
 
   useEffect(() => {
     if (!staff) return;
@@ -51,7 +42,6 @@ export default function KitchenPage() {
             next[existing] = updated;
             return next;
           }
-          // new order — play sound
           if (audioRef.current) audioRef.current.play().catch(() => {});
           return [updated, ...prev];
         });
@@ -76,17 +66,23 @@ export default function KitchenPage() {
   const getUrgency = (order: Order) => {
     const elapsed = Date.now() - new Date(order.createdAt).getTime();
     const min = Math.floor(elapsed / 60000);
-    if (order.status === "ready" || order.status === "delivered") return { border: isDark ? "border-zinc-700" : "border-zinc-200", min };
-    if (min > 20) return { border: "border-red-500 ring-2 ring-red-500/20", min };
-    if (min > 10) return { border: "border-amber-500 ring-2 ring-amber-500/20", min };
+    if (order.status === "ready" || order.status === "delivered") {
+      return { border: isDark ? "border-zinc-700" : "border-zinc-200", min };
+    }
+    if (min > 20) {
+      return { border: "border-red-500 ring-2 ring-red-500/20", min };
+    }
+    if (min > 10) {
+      return { border: "border-amber-500 ring-2 ring-amber-500/20", min };
+    }
     return { border: isDark ? "border-blue-500" : "border-blue-400", min };
   };
 
-  if (!staff) return null;
+  if (authLoading || !staff) return null;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? "bg-zinc-950 text-white" : "bg-zinc-50 text-zinc-800"}`}>
-      <audio ref={audioRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACAf39/f4CAgH9/f3+AgICAf39/f4CAgIB/f39/gICAf39/f3+AgICAf39/f4CAgIB/f39/gICAf39/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgIB/f39/gICAf39/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgICAf39/f4CAgH9/f3+AgI=" preload="none" />
+      <audio ref={audioRef} src="/notification.wav" />
 
       {/* Header */}
       <div className={`px-6 py-4 flex justify-between items-center border-b ${isDark ? "border-zinc-800" : "border-zinc-200"}`}>

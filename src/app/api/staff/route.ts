@@ -26,13 +26,13 @@ export async function POST(req: Request) {
   if (!staff || staff.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const hashed = await hashPassword(body.password);
+  const hashed = await hashPassword(body.pin);
 
   const newStaff = await prisma.staff.create({
     data: {
       outletId: staff.outletId,
       name: body.name,
-      password: hashed,
+      pin: hashed,
       role: body.role || "cashier",
     },
   });
@@ -46,7 +46,7 @@ export async function PATCH(req: Request) {
 
   const body = await req.json();
   const data: Record<string, unknown> = {};
-  if (body.password) data.password = await hashPassword(body.password);
+  if (body.pin) data.pin = await hashPassword(body.pin);
   if (body.role) data.role = body.role;
   if (body.active !== undefined) data.active = body.active;
 

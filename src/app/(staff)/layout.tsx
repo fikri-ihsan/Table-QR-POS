@@ -1,53 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-
-type Staff = {
-  id: string;
-  outletId: string;
-  name: string;
-  role: "admin" | "cashier" | "kitchen";
-};
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { ShoppingCart, ChefHat, ClipboardList, Coffee, Tags, Grid3x3, Users, Package, BarChart3, X, Menu, LogOut } from "lucide-react";
 
 const publicPaths = ["/login"];
 
 const navItems = [
-  { label: "POS", href: "/pos", icon: "▲" },
-  { label: "Menu", href: "/menu", icon: "☕" },
-  { label: "Meja", href: "/tables", icon: "▨" },
-  { label: "Kitchen", href: "/kitchen", icon: "●" },
-  { label: "Orders", href: "/orders", icon: "📋" },
-  { label: "Staff", href: "/staff", icon: "👤" },
-  { label: "Inventory", href: "/inventory", icon: "📦" },
-  { label: "Reports", href: "/reports", icon: "📊" },
+  { label: "POS", href: "/pos", icon: ShoppingCart, roles: ["admin", "cashier"] },
+  { label: "Kitchen", href: "/kitchen", icon: ChefHat, roles: ["admin", "cashier", "kitchen"] },
+  { label: "Orders", href: "/orders", icon: ClipboardList, roles: ["admin", "cashier"] },
+  { label: "Kategori", href: "/categories", icon: Tags, roles: ["admin"] },
+  { label: "Menu", href: "/menu", icon: Coffee, roles: ["admin"] },
+  { label: "Meja", href: "/tables", icon: Grid3x3, roles: ["admin"] },
+  { label: "Staff", href: "/staff", icon: Users, roles: ["admin"] },
+  { label: "Inventory", href: "/inventory", icon: Package, roles: ["admin"] },
+  { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin"] },
 ];
 
-export default function StaffLayout({ children }: { children: React.ReactNode }) {
+function StaffLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [staff, setStaff] = useState<Staff | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { staff, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    if (publicPaths.some((p) => pathname.startsWith(p))) {
-      setLoading(false);
-      return;
-    }
-
-    fetch("/api/auth/me")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Not authenticated");
-        const data = await res.json();
-        setStaff(data);
-      })
-      .catch(() => {
-        router.push("/login");
-      })
-      .finally(() => setLoading(false));
-  }, [pathname, router]);
+    if (staff && staff.role !== "admin") setSidebarOpen(false);
+  }, [staff]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -72,13 +53,13 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
           {sidebarOpen && <span className="font-bold text-sm text-zinc-800">Saji POS</span>}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-zinc-100 rounded text-zinc-800">
-            {sidebarOpen ? "◀" : "▶"}
+            {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
         </div>
 
         <nav className="flex-1 p-2 space-y-0.5">
           {navItems
-            .filter((item) => item.href !== "/staff" || staff?.role === "admin")
+            .filter((item) => item.roles.includes(staff?.role ?? ""))
             .map((item) => (
             <Link
               key={item.href}
@@ -89,7 +70,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
                   : "text-zinc-800 hover:bg-zinc-100"
               }`}
             >
-              <span className="text-base w-5 text-center">{item.icon}</span>
+              <item.icon size={18} />
               {sidebarOpen && <span>{item.label}</span>}
             </Link>
           ))}
@@ -103,9 +84,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           )}
           <button
             onClick={handleLogout}
-            className="w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg"
+            className="w-full flex items-center gap-3 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg"
           >
-            {sidebarOpen ? "Keluar" : "✕"}
+            <LogOut size={16} />
+            {sidebarOpen && <span>Keluar</span>}
           </button>
         </div>
       </aside>
@@ -115,5 +97,13 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
     </div>
+  );
+}
+
+export default function StaffLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <StaffLayoutContent>{children}</StaffLayoutContent>
+    </AuthProvider>
   );
 }

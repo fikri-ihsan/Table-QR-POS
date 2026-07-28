@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
+  const { staff, loading } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!loading && staff) {
+      router.push(staff.role === "kitchen" ? "/kitchen" : "/pos");
+    }
+  }, [staff, loading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,16 +24,17 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, password }),
+      body: JSON.stringify({ name, pin }),
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const data = await res.json();
       setError(data.error || "Login gagal");
       return;
     }
 
-    router.push("/pos");
+    router.push(data.role === "kitchen" ? "/kitchen" : "/pos");
   };
 
   return (
@@ -51,14 +60,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-800 mb-1">Password</label>
+            <label htmlFor="pin" className="block text-sm font-medium text-zinc-800 mb-1">PIN</label>
             <input
-              id="password"
+              id="pin"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-zinc-400 bg-white text-zinc-800 text-sm placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              placeholder="Masukkan password"
+              placeholder="Masukkan PIN"
               required
             />
           </div>

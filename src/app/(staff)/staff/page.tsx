@@ -1,41 +1,45 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 
 type Staff = { id: string; name: string; role: string; active: boolean; createdAt: string };
 
 export default function StaffPage() {
+  const { staff, loading: authLoading } = useAuth();
   const router = useRouter();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", password: "", role: "cashier" });
+  const [form, setForm] = useState({ name: "", pin: "", role: "cashier" });
 
   useEffect(() => {
-    fetch("/api/auth/me").then(async (res) => {
-      if (!res.ok) return router.push("/login");
-      const s = await res.json();
-      if (s.role !== "admin") return router.push("/pos");
-      const r = await fetch("/api/staff");
-      setStaffList(await r.json());
+    if (!staff) return;
+    if (staff.role !== "admin") {
       setLoading(false);
-    });
-  }, [router]);
+      return;
+    }
+    fetch("/api/staff")
+      .then((r) => r.json())
+      .then(setStaffList)
+      .then(() => setLoading(false));
+  }, [staff]);
 
   const handleAdd = async () => {
+    if (staff?.role !== "admin") return;
     await fetch("/api/staff", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, password: form.password, role: form.role }),
+      body: JSON.stringify({ name: form.name, pin: form.pin, role: form.role }),
     });
     setShowForm(false);
-    setForm({ name: "", password: "", role: "cashier" });
+    setForm({ name: "", pin: "", role: "cashier" });
     const r = await fetch("/api/staff");
     setStaffList(await r.json());
   };
 
-  if (loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -46,9 +50,9 @@ export default function StaffPage() {
 
       {showForm && (
         <div className="bg-white border border-zinc-200 rounded-2xl p-4 mb-6 flex gap-3 items-end">
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm w-40" /></div>
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Password</label><input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm w-32" /></div>
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm">
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-40" /></div>
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">PIN</label><input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-32" /></div>
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white">
             <option value="cashier">Kasir</option><option value="kitchen">Dapur</option><option value="admin">Admin</option>
           </select></div>
           <button onClick={handleAdd} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold">Tambah</button>

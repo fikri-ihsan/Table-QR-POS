@@ -3,9 +3,13 @@ import { verifyToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-export async function GET() {
+async function getStaff() {
   const cookieStore = await cookies();
-  const staff = await verifyToken(cookieStore.get("token")?.value || "");
+  return verifyToken(cookieStore.get("token")?.value || "");
+}
+
+export async function GET() {
+  const staff = await getStaff();
   if (!staff) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -18,10 +22,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies();
-  const staff = await verifyToken(cookieStore.get("token")?.value || "");
-  if (!staff) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const staff = await getStaff();
+  if (!staff || staff.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json();

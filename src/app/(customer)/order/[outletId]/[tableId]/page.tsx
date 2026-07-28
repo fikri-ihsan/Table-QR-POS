@@ -149,19 +149,17 @@ export default function CustomerOrderPage({
       </div>
 
       {/* Menu Items */}
-      <div className="px-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3 px-4">
         {filteredItems.map((item) => (
-          <div key={item.id} className="bg-white rounded-2xl p-4 flex gap-3 shadow-sm">
-            <div className="w-20 h-20 rounded-xl bg-zinc-100 flex-shrink-0 flex items-center justify-center text-zinc-400 text-xs">
+          <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="h-36 bg-zinc-100 flex items-center justify-center text-zinc-400 text-xs">
               {item.image ? (
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-xl" />
-              ) : (
-                "Foto"
-              )}
+                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+              ) : "Foto"}
             </div>
-            <div className="flex-1">
+            <div className="p-3">
               <h3 className="font-semibold text-sm">{item.name}</h3>
-              <p className="text-xs text-zinc-500 mt-0.5">{item.description}</p>
+              {item.description && <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{item.description}</p>}
               <div className="flex justify-between items-center mt-2">
                 <span className="font-bold text-sm text-violet-600">
                   Rp {item.price.toLocaleString("id-ID")}
@@ -218,7 +216,7 @@ export default function CustomerOrderPage({
                           prev.map((i) => (i.id === item.id ? { ...i, notes: e.target.value } : i))
                         )
                       }
-                      className="mt-1 w-full text-xs px-2 py-1 rounded border border-zinc-200"
+                      className="mt-1 w-full text-xs px-2 py-1 rounded border border-zinc-200 text-zinc-800 bg-white"
                     />
                   </div>
                   <div className="flex items-center gap-2 ml-3">
@@ -236,7 +234,7 @@ export default function CustomerOrderPage({
                 placeholder="Nama kamu (opsional)"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm"
+                className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white"
               />
               <div className="flex justify-between font-bold">
                 <span>Total</span>

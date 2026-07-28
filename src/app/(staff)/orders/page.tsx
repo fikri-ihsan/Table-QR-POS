@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 
 type Order = {
@@ -15,26 +16,34 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const { staff, loading: authLoading } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("all");
-  const [staff, setStaff] = useState<{ role: string } | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/me").then(async (res) => {
-      if (!res.ok) return router.push("/login");
-      const s = await res.json();
-      setStaff(s);
-      loadOrders();
-    });
-  }, [router]);
+  const [loading, setLoading] = useState(true);
 
   const loadOrders = async () => {
-    const r = await fetch("/api/orders");
-    setOrders(await r.json());
+    if (staff?.role === "kitchen") { router.push("/kitchen"); return; }
+    setLoading(true);
+    try {
+      const r = await fetch("/api/orders");
+      if (r.ok) {
+        setOrders(await r.json());
+      }
+    } catch (e) {
+      console.error("Gagal load orders:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    if (!staff) return;
+    loadOrders();
+  }, [staff]);
+
   const updateStatus = async (id: string, status: string) => {
+    if (staff?.role === "kitchen") { router.push("/kitchen"); return; }
     await fetch(`/api/orders/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -43,7 +52,7 @@ export default function OrdersPage() {
     loadOrders();
   };
 
-  if (!staff) return null;
+  if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
 
   const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
 

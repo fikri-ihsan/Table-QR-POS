@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 
 type Category = { id: string; name: string; sortOrder: number };
 type MenuItem = {
@@ -17,11 +19,11 @@ type MenuItem = {
 };
 
 export default function MenuPage() {
+  const { staff, loading: authLoading, refresh } = useAuth();
   const router = useRouter();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [staff, setStaff] = useState<{ role: string } | null>(null);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -33,30 +35,21 @@ export default function MenuPage() {
     stock: "",
     lowStockAt: "",
   });
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me").then(async (res) => {
-      if (!res.ok) return router.push("/login");
-      const s = await res.json();
-      setStaff(s);
-    });
-  }, [router]);
-
-  useEffect(() => {
     if (!staff) return;
-    if (staff.role !== "admin") {
-      fetch("/api/menu").then((r) => r.json()).then(setItems).then(() => setLoading(false));
-    } else {
-      Promise.all([
-        fetch("/api/categories").then((r) => r.json()),
-        fetch("/api/menu").then((r) => r.json()),
-      ]).then(([cats, items]) => {
-        setCategories(cats);
-        setItems(items);
-        setLoading(false);
-      });
-    }
+    if (staff.role !== "admin") { router.push("/pos"); return; }
+    Promise.all([
+      fetch("/api/categories").then((r) => r.json()),
+      fetch("/api/menu").then((r) => r.json()),
+    ]).then(([cats, items]) => {
+      setCategories(cats);
+      setItems(items);
+      setLoading(false);
+    });
   }, [staff]);
 
   const handleSave = async () => {
@@ -73,9 +66,11 @@ export default function MenuPage() {
     const url = editingId ? `/api/menu/${editingId}` : "/api/menu";
     const method = editingId ? "PUT" : "POST";
 
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const payloadWithImage = imageUrl ? { ...payload, image: imageUrl } : payload;
+    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payloadWithImage) });
     setShowForm(false);
     setEditingId(null);
+    setImageUrl(null);
     setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" });
 
     // refresh
@@ -98,11 +93,26 @@ export default function MenuPage() {
       stock: item.stock?.toString() || "",
       lowStockAt: item.lowStockAt?.toString() || "",
     });
+    setImageUrl(item.image);
     setEditingId(item.id);
     setShowForm(true);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const compressed = await imageCompression(file, { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true });
+    const fd = new FormData();
+    fd.append("file", compressed);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    setImageUrl(data.url);
+    setUploading(false);
+  };
+
   const toggleAvailable = async (item: MenuItem) => {
+    if (staff?.role !== "admin") return;
     await fetch(`/api/menu/${item.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -111,7 +121,7 @@ export default function MenuPage() {
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, available: !i.available } : i)));
   };
 
-  if (loading || !staff) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
+  if (authLoading || loading || !staff) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -119,7 +129,7 @@ export default function MenuPage() {
         <h1 className="text-2xl font-bold text-zinc-800">Menu Items</h1>
         {staff?.role === "admin" && (
           <button
-            onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
+            onClick={() => { setShowForm(!showForm); setEditingId(null); setImageUrl(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
             className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
           >
             + Tambah Item
@@ -133,31 +143,46 @@ export default function MenuPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Nama</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Harga (Rp)</label>
-              <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
+              <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-zinc-800 mb-1">Deskripsi</label>
-              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
+              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Kategori</label>
-              <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm">
+              <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white">
                 <option value="">Pilih kategori</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-800 mb-1">Foto</label>
+              <div className="flex items-center gap-3">
+                {imageUrl && (
+                  <img src={imageUrl} alt="" className="w-14 h-14 rounded-xl object-cover border border-zinc-200" />
+                )}
+                <label className={`px-3 py-1.5 rounded-xl border text-xs cursor-pointer ${uploading ? "opacity-50" : "hover:bg-zinc-50"} text-zinc-700 border-zinc-300`}>
+                  {uploading ? "Uploading..." : imageUrl ? "Ganti" : "Upload"}
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
+                </label>
+                {imageUrl && (
+                  <button onClick={() => setImageUrl(null)} className="text-xs text-red-500 hover:text-red-700">Hapus</button>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-800 mb-1">Stock</label>
-                <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" placeholder="Kosongkan = unlimited" />
+                <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" placeholder="Kosongkan = unlimited" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-800 mb-1">Min. Stock Alert</label>
-                <input type="number" value={form.lowStockAt} onChange={(e) => setForm({ ...form, lowStockAt: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm" />
+                <input type="number" value={form.lowStockAt} onChange={(e) => setForm({ ...form, lowStockAt: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
               </div>
             </div>
           </div>
@@ -185,7 +210,10 @@ export default function MenuPage() {
           <tbody className="divide-y divide-zinc-100">
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-zinc-50">
-                <td className="px-4 py-3 font-medium text-zinc-800">{item.name}</td>
+                <td className="px-4 py-3 font-medium text-zinc-800 flex items-center gap-2">
+                  {item.image && <img src={item.image} alt="" className="w-8 h-8 rounded-lg object-cover" />}
+                  {item.name}
+                </td>
                 <td className="px-4 py-3 text-zinc-800">{item.category.name}</td>
                 <td className="px-4 py-3 text-right font-mono text-zinc-800">Rp {item.price.toLocaleString("id-ID")}</td>
                 <td className="px-4 py-3 text-center">

@@ -5,19 +5,19 @@ import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
-    const { name, password } = await req.json();
+    const { name, pin } = await req.json();
 
     const staff = await prisma.staff.findFirst({
       where: { name, active: true },
     });
 
     if (!staff) {
-      return NextResponse.json({ error: "Nama atau password salah" }, { status: 401 });
+      return NextResponse.json({ error: "Nama atau PIN salah" }, { status: 401 });
     }
 
-    const valid = await verifyPassword(password, staff.password);
+    const valid = await verifyPassword(pin, staff.pin);
     if (!valid) {
-      return NextResponse.json({ error: "Nama atau password salah" }, { status: 401 });
+      return NextResponse.json({ error: "Nama atau PIN salah" }, { status: 401 });
     }
 
     const token = await signToken({
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 12,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, role: staff.role });
   } catch (error) {
     return NextResponse.json({ error: "Terjadi kesalahan" }, { status: 500 });
   }

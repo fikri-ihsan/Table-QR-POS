@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 
 type InventoryItem = {
@@ -9,18 +10,19 @@ type InventoryItem = {
 };
 
 export default function InventoryPage() {
+  const { staff, loading: authLoading } = useAuth();
   const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth/me").then(async (res) => {
-      if (!res.ok) return router.push("/login");
-      const res2 = await fetch("/api/inventory");
-      setItems(await res2.json());
-      setLoading(false);
-    });
-  }, [router]);
+    if (!staff) return;
+    if (staff.role !== "admin") { router.push("/pos"); return; }
+    fetch("/api/inventory")
+      .then((r) => r.json())
+      .then(setItems)
+      .finally(() => setLoading(false));
+  }, [staff]);
 
   const updateStock = async (id: string, stock: number) => {
     await fetch("/api/inventory", {
@@ -31,9 +33,9 @@ export default function InventoryPage() {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, stock } : i)));
   };
 
-  if (loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
 
-  const lowStockItems = items.filter((i) => i.stock !== null && i.lowStockAt !== null && i.stock! <= i.lowStockAt!);
+    const lowStockItems = items.filter((i) => i.stock !== null && i.lowStockAt !== null && i.stock <= i.lowStockAt);
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -74,15 +76,17 @@ export default function InventoryPage() {
                 </td>
                 <td className="px-4 py-3 text-center text-zinc-600">{item.lowStockAt ?? "—"}</td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => {
-                      const val = prompt("Stock baru:", String(item.stock ?? ""));
-                      if (val) updateStock(item.id, parseInt(val));
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
-                  >
-                    Update
-                  </button>
+                  {staff?.role === "admin" ? (
+                    <button
+                      onClick={() => {
+                        const val = prompt("Stock baru:", String(item.stock ?? ""));
+                        if (val) updateStock(item.id, parseInt(val));
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                    >
+                      Update
+                    </button>
+                  ) : <span className="text-xs text-zinc-400">-</span>}
                 </td>
               </tr>
             ))}

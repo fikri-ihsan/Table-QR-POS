@@ -32,7 +32,7 @@ export async function GET(req: Request) {
       paymentStatus: "paid",
       createdAt: { gte: startDate, lte: endDate },
     },
-    include: { items: true, table: true },
+    include: { items: { include: { menuItem: true } }, table: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -40,14 +40,13 @@ export async function GET(req: Request) {
   const totalOrders = orders.length;
   const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
-  // popular items
+  // popular items — using already-loaded menuItem data
   const itemCounts: Record<string, { name: string; qty: number; revenue: number }> = {};
   for (const order of orders) {
     for (const item of order.items) {
       const key = item.menuItemId;
       if (!itemCounts[key]) {
-        const menuItem = await prisma.menuItem.findUnique({ where: { id: key } });
-        itemCounts[key] = { name: menuItem?.name || "Unknown", qty: 0, revenue: 0 };
+        itemCounts[key] = { name: item.menuItem?.name || "Unknown", qty: 0, revenue: 0 };
       }
       itemCounts[key].qty += item.quantity;
       itemCounts[key].revenue += item.price * item.quantity;
