@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { orderId } = await req.json();
+    const { orderId, callbackUrl } = await req.json();
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         first_name: order.customerName || "Customer",
       },
       callbacks: {
-        finish: `${appUrl}/order/${order.outletId}/${order.tableId || ""}`,
+        finish: callbackUrl || `${appUrl}/order/${order.outletId}/${order.tableId || ""}`,
       },
     });
 

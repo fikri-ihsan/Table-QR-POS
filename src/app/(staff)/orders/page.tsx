@@ -21,6 +21,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   const loadOrders = async () => {
     if (staff?.role === "kitchen") { router.push("/kitchen"); return; }
@@ -54,11 +55,18 @@ export default function OrdersPage() {
 
   if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
 
-  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
+  const filtered = (filter === "all" ? orders : orders.filter((o) => o.status === filter))
+    .filter((o) =>
+      o.orderNumber.toString().includes(search) ||
+      (o.customerName || "").toLowerCase().includes(search.toLowerCase())
+    );
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-zinc-800 mb-6">Pesanan</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-zinc-800">Pesanan</h1>
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari pesanan..." className="w-48 px-3 py-1.5 rounded-xl border border-zinc-300 text-sm bg-white text-zinc-800 placeholder-zinc-400 ml-auto" />
+      </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto">
         {[{ key: "all", label: "Semua" }, ...Object.entries(statusLabels).map(([key, label]) => ({ key, label }))].map((f) => (

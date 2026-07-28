@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import Toast from "@/components/toast";
 
 type MenuItem = { id: string; name: string; price: number; image: string | null; category: { name: string }; available: boolean };
 type CartItem = MenuItem & { qty: number; notes: string };
@@ -16,6 +17,25 @@ export default function POSPage() {
   const [orderType, setOrderType] = useState("dine_in");
   const [tableNumber, setTableNumber] = useState(1);
   const [tables, setTables] = useState<{ id: string; number: number }[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [lastOrderNumber, setLastOrderNumber] = useState(0);
+  const [todayCount, setTodayCount] = useState(0);
+
+  useEffect(() => {
+    if (!staff) return;
+    fetch("/api/orders").then((r) => r.json()).then((orders: { createdAt: string }[]) => {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      setTodayCount(orders.filter((o) => new Date(o.createdAt) >= today).length);
+    }).catch(() => {});
+  }, [staff]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("transaction_status") === "settlement") {
+      setToast("✓ Pembayaran berhasil!");
+      window.history.replaceState({}, "", "/pos");
+    }
+  }, []);
 
   useEffect(() => {
     if (!staff) return;
@@ -65,6 +85,7 @@ export default function POSPage() {
       }),
     });
     const order = await res.json();
+    setLastOrderNumber(order.orderNumber);
 
     if (paymentMethod === "cash") {
       await fetch(`/api/orders/${order.id}`, {
@@ -72,10 +93,27 @@ export default function POSPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "received" }),
       });
-    }
+      setCart([]);
+      setToast(`✓ Pesanan #${order.orderNumber} — Tunai dibayar!`);
+    } else {
+      const payRes = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          callbackUrl: window.location.origin + "/pos",
+        }),
+      });
+      const payData = await payRes.json();
 
-    setCart([]);
-    alert(`Pesanan #${order.orderNumber} berhasil dibuat!`);
+      if (payData.redirectUrl) {
+        window.open(payData.redirectUrl, "_blank");
+        setCart([]);
+        setToast(`✓ Pesanan #${order.orderNumber} — Silakan selesaikan pembayaran di tab baru.`);
+      } else {
+        setToast("✕ Gagal membuat pembayaran. Periksa konfigurasi Midtrans.");
+      }
+    }
   };
 
   const categories = ["Semua", ...new Set(items.map((i) => i.category.name))];
@@ -83,6 +121,7 @@ export default function POSPage() {
   if (authLoading || !staff) return null;
 
   return (
+    <>
     <div className="h-screen flex flex-col bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -162,14 +201,18 @@ export default function POSPage() {
               <div className="flex justify-between font-bold text-sm text-zinc-800 pt-1 border-t border-zinc-100"><span>Total</span><span>Rp {total.toLocaleString("id-ID")}</span></div>
             </div>
 
+            <div className="text-center text-xs text-zinc-400">
+              {lastOrderNumber > 0 ? <span>Pesanan Terakhir: #{lastOrderNumber}</span> : todayCount > 0 && <span>Pesanan #{todayCount + 1}</span>}
+            </div>
             <div className="space-y-2">
               <button onClick={() => handleCheckout("cash")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-green-600 text-white text-base font-semibold disabled:opacity-40">Tunai</button>
               <button onClick={() => handleCheckout("qris")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-blue-600 text-white text-base font-semibold disabled:opacity-40">QRIS</button>
-              <button onClick={() => handleCheckout("card")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-violet-600 text-white text-base font-semibold disabled:opacity-40">Card/VA</button>
             </div>
           </div>
         </div>
       </div>
     </div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import QRCode from "qrcode";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
@@ -22,5 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // store the QR URL in the table record
   await prisma.table.update({ where: { id }, data: { qrCode: qrData } });
 
-  return NextResponse.json({ qrUrl: qrData });
+  const qrImage = await QRCode.toDataURL(qrData, { width: 400, margin: 2 });
+
+  return NextResponse.json({ qrUrl: qrData, qrImage });
 }

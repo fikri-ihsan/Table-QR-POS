@@ -90,6 +90,7 @@ model Table {
 
 model Order {
   id            String   @id @default(cuid())
+  ref           String?  // invoice reference (nanoid)
   outletId      String
   outlet        Outlet   @relation(fields: [outletId], references: [id])
   tableId       String?

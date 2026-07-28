@@ -1,6 +1,13 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { verifyToken } from "@/lib/auth";
 import Link from "next/link";
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies();
+  const staff = await verifyToken(cookieStore.get("token")?.value || "");
+  if (staff) redirect(staff.role === "kitchen" ? "/kitchen" : "/pos");
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-violet-50 to-white px-4">
       <div className="text-center max-w-lg">

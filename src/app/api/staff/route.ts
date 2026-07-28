@@ -46,6 +46,7 @@ export async function PATCH(req: Request) {
 
   const body = await req.json();
   const data: Record<string, unknown> = {};
+  if (body.name) data.name = body.name;
   if (body.pin) data.pin = await hashPassword(body.pin);
   if (body.role) data.role = body.role;
   if (body.active !== undefined) data.active = body.active;
@@ -56,4 +57,15 @@ export async function PATCH(req: Request) {
   });
 
   return NextResponse.json({ id: updated.id, name: updated.name, role: updated.role, active: updated.active });
+}
+
+export async function DELETE(req: Request) {
+  const current = await getStaff();
+  if (!current || current.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { id } = await req.json();
+  if (id === current.id) return NextResponse.json({ error: "Tidak bisa hapus diri sendiri" }, { status: 400 });
+
+  await prisma.staff.delete({ where: { id } });
+  return NextResponse.json({ success: true });
 }

@@ -13,6 +13,15 @@ type MenuItem = {
 
 type CartItem = MenuItem & { qty: number; notes: string };
 
+type InvoiceOrder = {
+  orderRef: string;
+  orderNumber: number;
+  total: number;
+  subtotal: number;
+  createdAt: string;
+  items: { name: string; qty: number; price: number }[];
+};
+
 export default function CustomerOrderPage({
   params,
 }: {
@@ -27,8 +36,21 @@ export default function CustomerOrderPage({
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [paymentUrl, setPaymentUrl] = useState("");
+  const [paidOrder, setPaidOrder] = useState<InvoiceOrder | null>(null);
 
   useEffect(() => {
+    const params2 = new URLSearchParams(window.location.search);
+    const ts = params2.get("transaction_status");
+    if (ts === "settlement" || ts === "capture") {
+      const saved = localStorage.getItem("lastOrder");
+      if (saved) {
+        setPaidOrder(JSON.parse(saved));
+        localStorage.removeItem("lastOrder");
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
     params.then((p) => {
       setOutletId(p.outletId);
       setTableId(p.tableId);
@@ -85,11 +107,21 @@ export default function CustomerOrderPage({
 
     const order = await res.json();
 
+    const today = new Date();
+    localStorage.setItem("lastOrder", JSON.stringify({
+      orderRef: order.ref,
+      orderNumber: order.orderNumber,
+      total: order.total,
+      subtotal: order.subtotal,
+      createdAt: today.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+      items: cart.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
+    }));
+
     // create Midtrans payment
     const payRes = await fetch("/api/payment/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: order.id }),
+      body: JSON.stringify({ orderId: order.id, callbackUrl: window.location.href }),
     });
     const payData = await payRes.json();
 
@@ -98,6 +130,55 @@ export default function CustomerOrderPage({
       setShowCart(false);
     }
   };
+
+  if (paidOrder) {
+    const tax = paidOrder.total - paidOrder.subtotal;
+    return (
+      <div className="min-h-screen bg-zinc-50 flex flex-col items-center p-6">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-6 space-y-4 mt-10">
+          <div className="text-center">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">
+              <span className="text-xl text-green-600">✓</span>
+            </div>
+            <h2 className="text-lg font-bold text-zinc-800">Pembayaran Berhasil</h2>
+            <p className="text-xs text-zinc-500">Pesanan #{paidOrder.orderNumber}</p>
+            <p className="text-[10px] text-zinc-400 font-mono">Ref: {paidOrder.orderRef}</p>
+            <p className="text-[10px] text-zinc-400">{paidOrder.createdAt}</p>
+          </div>
+
+          <div className="border-t border-zinc-100 pt-4 space-y-2">
+            {paidOrder.items.map((item, i) => (
+              <div key={i} className="flex justify-between text-sm">
+                <span className="text-zinc-700"><span className="font-semibold">{item.qty}x</span> {item.name}</span>
+                <span className="text-zinc-800">Rp {(item.price * item.qty).toLocaleString("id-ID")}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-zinc-100 pt-3 space-y-1 text-sm">
+            <div className="flex justify-between text-zinc-600"><span>Subtotal</span><span>Rp {paidOrder.subtotal.toLocaleString("id-ID")}</span></div>
+            <div className="flex justify-between text-zinc-600"><span>Pajak 10%</span><span>Rp {tax.toLocaleString("id-ID")}</span></div>
+            <div className="flex justify-between font-bold text-zinc-800 pt-1 border-t border-zinc-100"><span>Total Dibayar</span><span>Rp {paidOrder.total.toLocaleString("id-ID")}</span></div>
+          </div>
+
+          <p className="text-center text-xs text-zinc-400 pt-2">Terima kasih! Silakan tunggu pesanan Anda.</p>
+
+          <button
+            onClick={() => window.print()}
+            className="w-full py-3 rounded-xl border border-zinc-300 text-zinc-700 text-sm font-semibold hover:bg-zinc-50 no-print"
+          >
+            Download Invoice
+          </button>
+          <button
+            onClick={() => { setPaidOrder(null); setCart([]); localStorage.removeItem("lastOrder"); }}
+            className="w-full py-3 rounded-xl bg-violet-600 text-white font-semibold text-sm hover:bg-violet-700 no-print"
+          >
+            Pesan Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (paymentUrl) {
     return (

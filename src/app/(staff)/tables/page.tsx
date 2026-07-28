@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "@/components/confirm-dialog";
 
 type Table = {
   id: string;
@@ -20,7 +21,9 @@ export default function TablesPage() {
   const [showForm, setShowForm] = useState(false);
   const [newNumber, setNewNumber] = useState("");
   const [newCapacity, setNewCapacity] = useState("4");
-  const [qrMap, setQrMap] = useState<Record<string, string>>({});
+  const [qrMap, setQrMap] = useState<Record<string, { url: string; image: string }>>({});
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadTables = async () => {
     const res = await fetch("/api/tables");
@@ -46,26 +49,31 @@ export default function TablesPage() {
     loadTables();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Hapus meja ini?")) return;
-    await fetch(`/api/tables/${id}`, { method: "DELETE" });
-    setQrMap((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await fetch(`/api/tables/${deleteTarget}`, { method: "DELETE" });
+    setQrMap((prev) => { const n = { ...prev }; delete n[deleteTarget]; return n; });
+    setDeleteTarget(null);
+    setDeleting(false);
     loadTables();
   };
 
-  const generateQR = async (id: string) => {
+  const generateQR = async (id: string, auto = false) => {
+    if (qrMap[id] && !auto) return;
     const res = await fetch(`/api/tables/${id}/qr`);
     const data = await res.json();
-    setQrMap((prev) => ({ ...prev, [id]: data.qrUrl }));
+    setQrMap((prev) => ({ ...prev, [id]: { url: data.qrUrl, image: data.qrImage } }));
   };
+
+  useEffect(() => {
+    tables.forEach((t) => { if (t.qrCode) generateQR(t.id, true); });
+  }, [tables.length]);
 
   if (authLoading || loading) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
 
   return (
+    <>
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-zinc-800">Meja</h1>
@@ -109,8 +117,24 @@ export default function TablesPage() {
             </div>
 
             {qrMap[table.id] ? (
-              <div className="text-xs bg-zinc-50 rounded-xl p-3 break-all font-mono text-zinc-800">
-                {qrMap[table.id]}
+              <div className="flex flex-col items-center gap-2">
+                <img src={qrMap[table.id].image} alt={`QR Meja ${table.number}`} className="w-40 h-40" />
+                <div className="flex gap-3 items-center">
+                  <a
+                    href={qrMap[table.id].image}
+                    download={`meja-${table.number}.png`}
+                    className="text-xs text-violet-600 hover:text-violet-800 font-medium"
+                  >
+                    Download QR
+                  </a>
+                  <span className="text-zinc-300">|</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(qrMap[table.id].url)}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Copy URL
+                  </button>
+                </div>
               </div>
             ) : (
               <button
@@ -123,11 +147,22 @@ export default function TablesPage() {
 
             <div className="flex justify-between text-xs pt-2 border-t border-zinc-100">
               <span className="text-zinc-800">ID: {table.id.slice(0, 8)}...</span>
-              <button onClick={() => handleDelete(table.id)} className="text-red-500 hover:text-red-700 font-medium">Hapus</button>
+              <button onClick={() => setDeleteTarget(table.id)} className="text-red-500 hover:text-red-700 font-medium">Hapus</button>
             </div>
           </div>
         ))}
       </div>
     </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Hapus Meja"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        loading={deleting}
+      >
+        <p className="text-sm text-zinc-600">Yakin hapus meja ini? Data pesanan terkait tetap tersimpan.</p>
+      </ConfirmDialog>
+    </>
   );
 }

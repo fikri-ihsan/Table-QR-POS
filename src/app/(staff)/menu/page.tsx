@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
+import ConfirmDialog from "@/components/confirm-dialog";
 
 type Category = { id: string; name: string; sortOrder: number };
 type MenuItem = {
@@ -38,6 +39,9 @@ export default function MenuPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!staff) return;
@@ -78,10 +82,13 @@ export default function MenuPage() {
     setItems(items);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Hapus item ini?")) return;
-    await fetch(`/api/menu/${id}`, { method: "DELETE" });
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await fetch(`/api/menu/${deleteTarget.id}`, { method: "DELETE" });
+    setItems((prev) => prev.filter((i) => i.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
   };
 
   const handleEdit = (item: MenuItem) => {
@@ -124,9 +131,11 @@ export default function MenuPage() {
   if (authLoading || loading || !staff) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
 
   return (
+    <>
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-zinc-800">Menu Items</h1>
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari menu..." className="w-48 px-3 py-1.5 rounded-xl border border-zinc-300 text-sm bg-white text-zinc-800 placeholder-zinc-400 ml-auto" />
         {staff?.role === "admin" && (
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null); setImageUrl(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
@@ -208,7 +217,7 @@ export default function MenuPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {items.map((item) => (
+            {items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())).map((item) => (
               <tr key={item.id} className="hover:bg-zinc-50">
                 <td className="px-4 py-3 font-medium text-zinc-800 flex items-center gap-2">
                   {item.image && <img src={item.image} alt="" className="w-8 h-8 rounded-lg object-cover" />}
@@ -233,7 +242,7 @@ export default function MenuPage() {
                   {staff?.role === "admin" ? (
                     <>
                       <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-2">Edit</button>
-                      <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                      <button onClick={() => setDeleteTarget(item)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
                     </>
                   ) : <span className="text-zinc-300 text-xs">-</span>}
                 </td>
@@ -243,5 +252,24 @@ export default function MenuPage() {
         </table>
       </div>
     </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Hapus Item"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        loading={deleting}
+      >
+        {deleteTarget && (
+          <div className="flex items-center gap-3">
+            {deleteTarget.image && <img src={deleteTarget.image} alt="" className="w-12 h-12 rounded-xl object-cover" />}
+            <div>
+              <p className="font-medium text-sm text-zinc-800">{deleteTarget.name}</p>
+              <p className="text-xs text-zinc-500">Rp {deleteTarget.price.toLocaleString("id-ID")}</p>
+            </div>
+          </div>
+        )}
+      </ConfirmDialog>
+    </>
   );
 }

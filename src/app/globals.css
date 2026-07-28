@@ -10,3 +10,8 @@ body {
   color: #27272a;
   font-family: var(--font-geist-sans);
 }
+
+@media print {
+  body { background: white !important; }
+  .no-print { display: none !important; }
+}

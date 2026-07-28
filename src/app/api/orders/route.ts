@@ -3,6 +3,7 @@ import { verifyToken } from "@/lib/auth";
 import { orderEvents } from "@/lib/sse";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { nanoid } from "nanoid";
 
 async function getStaff() {
   const cookieStore = await cookies();
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
         outletId,
         tableId: table?.id,
         staffId: staff?.id,
+        ref: nanoid(8).toUpperCase(),
         orderNumber: todayCount + 1,
         type: body.type || "dine_in",
         customerName: body.customerName || null,

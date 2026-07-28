@@ -9,15 +9,15 @@ import { ShoppingCart, ChefHat, ClipboardList, Coffee, Tags, Grid3x3, Users, Pac
 const publicPaths = ["/login"];
 
 const navItems = [
-  { label: "POS", href: "/pos", icon: ShoppingCart, roles: ["admin", "cashier"] },
-  { label: "Kitchen", href: "/kitchen", icon: ChefHat, roles: ["admin", "cashier", "kitchen"] },
-  { label: "Orders", href: "/orders", icon: ClipboardList, roles: ["admin", "cashier"] },
-  { label: "Kategori", href: "/categories", icon: Tags, roles: ["admin"] },
-  { label: "Menu", href: "/menu", icon: Coffee, roles: ["admin"] },
-  { label: "Meja", href: "/tables", icon: Grid3x3, roles: ["admin"] },
-  { label: "Staff", href: "/staff", icon: Users, roles: ["admin"] },
-  { label: "Inventory", href: "/inventory", icon: Package, roles: ["admin"] },
-  { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin"] },
+  { label: "POS", href: "/pos", icon: ShoppingCart, roles: ["admin", "cashier"], group: 1 },
+  { label: "Dapur", href: "/kitchen", icon: ChefHat, roles: ["admin", "cashier", "kitchen"], group: 1 },
+  { label: "Pesanan", href: "/orders", icon: ClipboardList, roles: ["admin", "cashier"], group: 1 },
+  { label: "Meja", href: "/tables", icon: Grid3x3, roles: ["admin"], group: 2 },
+  { label: "Kategori", href: "/categories", icon: Tags, roles: ["admin"], group: 2 },
+  { label: "Menu", href: "/menu", icon: Coffee, roles: ["admin"], group: 2 },
+  { label: "Staff", href: "/staff", icon: Users, roles: ["admin"], group: 3 },
+  { label: "Inventory", href: "/inventory", icon: Package, roles: ["admin"], group: 3 },
+  { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin"], group: 3 },
 ];
 
 function StaffLayoutContent({ children }: { children: React.ReactNode }) {
@@ -60,20 +60,27 @@ function StaffLayoutContent({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 p-2 space-y-0.5">
           {navItems
             .filter((item) => item.roles.includes(staff?.role ?? ""))
-            .map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${
-                pathname === item.href
-                  ? "bg-violet-100 text-violet-800 font-semibold"
-                  : "text-zinc-800 hover:bg-zinc-100"
-              }`}
-            >
-              <item.icon size={18} />
-              {sidebarOpen && <span>{item.label}</span>}
-            </Link>
-          ))}
+            .map((item, i, visible) => {
+              const elements: React.ReactNode[] = [];
+              if (i > 0 && visible[i - 1].group !== item.group) {
+                elements.push(<div key={`sep-${item.href}`} className="border-t border-zinc-200 my-1.5" />);
+              }
+              elements.push(
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${
+                    pathname === item.href
+                      ? "bg-violet-100 text-violet-800 font-semibold"
+                      : "text-zinc-800 hover:bg-zinc-100"
+                  }`}
+                >
+                  <item.icon size={18} />
+                  {sidebarOpen && <span>{item.label}</span>}
+                </Link>
+              );
+              return elements;
+            })}
         </nav>
 
         <div className="p-3 border-t border-zinc-200 space-y-2">

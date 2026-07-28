@@ -14,6 +14,7 @@ export default function InventoryPage() {
   const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!staff) return;
@@ -39,7 +40,10 @@ export default function InventoryPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-zinc-800 mb-6">Inventory Stock</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-zinc-800">Inventory Stock</h1>
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari item..." className="w-48 px-3 py-1.5 rounded-xl border border-zinc-300 text-sm bg-white text-zinc-800 placeholder-zinc-400 ml-auto" />
+      </div>
 
       {lowStockItems.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
@@ -66,7 +70,7 @@ export default function InventoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {items.map((item) => (
+            {items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())).map((item) => (
               <tr key={item.id} className="hover:bg-zinc-50">
                 <td className="px-4 py-3 font-medium text-zinc-800">{item.name}</td>
                 <td className="px-4 py-3 text-center">
