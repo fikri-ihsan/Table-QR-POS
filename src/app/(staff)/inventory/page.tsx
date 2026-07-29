@@ -15,6 +15,8 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [stockTarget, setStockTarget] = useState<InventoryItem | null>(null);
+  const [stockValue, setStockValue] = useState("");
 
   useEffect(() => {
     if (!staff) return;
@@ -36,9 +38,10 @@ export default function InventoryPage() {
 
   if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
 
-    const lowStockItems = items.filter((i) => i.stock !== null && i.lowStockAt !== null && i.stock <= i.lowStockAt);
+  const lowStockItems = items.filter((i) => i.stock !== null && i.lowStockAt !== null && i.stock <= i.lowStockAt);
 
   return (
+    <>
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-zinc-800">Inventory Stock</h1>
@@ -82,11 +85,8 @@ export default function InventoryPage() {
                 <td className="px-4 py-3 text-right">
                   {staff?.role === "admin" ? (
                     <button
-                      onClick={() => {
-                        const val = prompt("Stock baru:", String(item.stock ?? ""));
-                        if (val) updateStock(item.id, parseInt(val));
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                      onClick={() => { setStockTarget(item); setStockValue(String(item.stock ?? "")); }}
+                      className="px-3 py-1.5 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700"
                     >
                       Update
                     </button>
@@ -98,5 +98,23 @@ export default function InventoryPage() {
         </table>
       </div>
     </div>
+
+      {stockTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setStockTarget(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full space-y-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-semibold text-zinc-800">Update Stock</h2>
+            <p className="text-sm text-zinc-800 font-medium">{stockTarget.name}</p>
+            <p className="text-xs text-zinc-400">Stock sekarang: {stockTarget.stock ?? "∞"}</p>
+            <input type="number" value={stockValue} onChange={(e) => setStockValue(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" autoFocus />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setStockTarget(null)} className="px-4 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-700">Batal</button>
+              <button onClick={() => { updateStock(stockTarget.id, parseInt(stockValue)); setStockTarget(null); }}
+                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold">Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

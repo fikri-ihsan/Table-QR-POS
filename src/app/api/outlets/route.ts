@@ -8,7 +8,9 @@ export async function GET() {
   const staff = await verifyToken(cookieStore.get("token")?.value || "");
   if (!staff) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const outlets = await prisma.outlet.findMany();
+  const outlets = await prisma.outlet.findMany({
+    where: { id: staff.outletId },
+  });
   return NextResponse.json(outlets);
 }
 

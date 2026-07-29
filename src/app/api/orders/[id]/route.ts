@@ -18,11 +18,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json();
 
+  const updateData: Record<string, unknown> = { status: body.status };
+  if (body.paymentStatus) updateData.paymentStatus = body.paymentStatus;
+  if (body.paymentMethod) updateData.paymentMethod = body.paymentMethod;
+
   const order = await prisma.order.update({
     where: { id },
-    data: { status: body.status },
+    data: updateData,
     include: { items: { include: { menuItem: true } }, table: true },
   });
+
+  if (body.status === "cancelled") {
+    const orderItems = await prisma.orderItem.findMany({ where: { orderId: id }, include: { menuItem: true } });
+    for (const item of orderItems) {
+      if (item.menuItem.stock !== null) {
+        await prisma.menuItem.update({
+          where: { id: item.menuItemId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+  }
 
   if (body.status === "delivered" && order.tableId) {
     const hasOtherActiveOrders = await prisma.order.findFirst({

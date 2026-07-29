@@ -41,6 +41,24 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!staff) return;
     loadOrders();
+
+    const evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
+    evt.onmessage = (e) => {
+      if (e.data === '{"type":"connected"}') return;
+      try {
+        const updated = JSON.parse(e.data);
+        setOrders((prev) => {
+          const existing = prev.findIndex((o) => o.id === updated.id);
+          if (existing >= 0) {
+            const next = [...prev];
+            next[existing] = updated;
+            return next;
+          }
+          return [updated, ...prev];
+        });
+      } catch {}
+    };
+    return () => evt.close();
   }, [staff]);
 
   const updateStatus = async (id: string, status: string) => {
@@ -87,8 +105,8 @@ export default function OrdersPage() {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusLabels[order.status] ? "bg-violet-100 text-violet-700" : ""}`}>
                   {statusLabels[order.status] || order.status}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${order.paymentStatus === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                  {order.paymentStatus === "paid" ? "Lunas" : "Pending"}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${order.paymentStatus === "paid" ? "bg-green-100 text-green-700" : order.paymentStatus === "failed" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                  {order.paymentStatus === "paid" ? "Lunas" : order.paymentStatus === "failed" ? "Gagal" : "Pending"}
                 </span>
               </div>
             </div>
@@ -105,10 +123,10 @@ export default function OrdersPage() {
             <div className="flex justify-between items-center pt-3 border-t border-zinc-100">
               <span className="font-bold text-sm text-zinc-800">Rp {order.total.toLocaleString("id-ID")}</span>
               <div className="flex gap-1">
-                {order.status === "received" && <button onClick={() => updateStatus(order.id, "preparing")} className="px-3 py-1 rounded-lg bg-amber-500 text-white text-xs">Masak</button>}
-                {order.status === "preparing" && <button onClick={() => updateStatus(order.id, "ready")} className="px-3 py-1 rounded-lg bg-green-500 text-white text-xs">Siap</button>}
-                {order.status === "ready" && <button onClick={() => updateStatus(order.id, "delivered")} className="px-3 py-1 rounded-lg bg-blue-500 text-white text-xs">Antar</button>}
-                <button onClick={() => updateStatus(order.id, "cancelled")} className="px-3 py-1 rounded-lg border border-red-300 text-red-600 text-xs">Batal</button>
+                {order.paymentStatus === "paid" && order.status === "received" && <button onClick={() => updateStatus(order.id, "preparing")} className="px-3 py-1 rounded-lg bg-amber-500 text-white text-xs">Masak</button>}
+                {order.paymentStatus === "paid" && order.status === "preparing" && <button onClick={() => updateStatus(order.id, "ready")} className="px-3 py-1 rounded-lg bg-green-500 text-white text-xs">Siap</button>}
+                {order.paymentStatus === "paid" && order.status === "ready" && <button onClick={() => updateStatus(order.id, "delivered")} className="px-3 py-1 rounded-lg bg-blue-500 text-white text-xs">Antar</button>}
+                {order.paymentStatus !== "paid" && <button onClick={() => updateStatus(order.id, "cancelled")} className="px-3 py-1 rounded-lg border border-red-300 text-red-600 text-xs">{order.paymentStatus === "failed" ? "Batal" : "Batalkan"}</button>}
               </div>
             </div>
           </div>

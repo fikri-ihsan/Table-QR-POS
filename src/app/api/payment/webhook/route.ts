@@ -41,9 +41,23 @@ export async function POST(req: Request) {
         ? "failed"
         : "pending";
 
+    const updateData: Record<string, unknown> = { paymentStatus, midtransId: midtransOrderId };
+    if (paymentStatus === "failed") {
+      updateData.status = "cancelled";
+      const orderItems = await prisma.orderItem.findMany({ where: { orderId: order.id }, include: { menuItem: true } });
+      for (const item of orderItems) {
+        if (item.menuItem.stock !== null) {
+          await prisma.menuItem.update({
+            where: { id: item.menuItemId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      }
+    }
+
     await prisma.order.update({
       where: { id: order.id },
-      data: { paymentStatus, midtransId: midtransOrderId },
+      data: updateData,
     });
 
     if (paymentStatus === "paid") {

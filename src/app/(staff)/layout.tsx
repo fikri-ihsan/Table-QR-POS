@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { ShoppingCart, ChefHat, ClipboardList, Coffee, Tags, Grid3x3, Users, Package, BarChart3, X, Menu, LogOut } from "lucide-react";
+import { ShoppingCart, ChefHat, ClipboardList, Coffee, Tags, Grid3x3, Users, Package, BarChart3, Settings, X, Menu, LogOut } from "lucide-react";
 
 const publicPaths = ["/login"];
 
@@ -18,6 +18,7 @@ const navItems = [
   { label: "Staff", href: "/staff", icon: Users, roles: ["admin"], group: 3 },
   { label: "Inventory", href: "/inventory", icon: Package, roles: ["admin"], group: 3 },
   { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin"], group: 3 },
+  { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"], group: 3 },
 ];
 
 function StaffLayoutContent({ children }: { children: React.ReactNode }) {
@@ -49,9 +50,9 @@ function StaffLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex bg-zinc-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "w-56" : "w-16"} bg-white border-r border-zinc-200 flex flex-col transition-all duration-200`}>
+      <aside className={`no-print ${sidebarOpen ? "w-56" : "w-16"} bg-white border-r border-zinc-200 flex flex-col transition-all duration-200`}>
         <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
-          {sidebarOpen && <span className="font-bold text-sm text-zinc-800">Saji POS</span>}
+          {sidebarOpen && <span className="font-bold text-sm text-zinc-800">Laris POS</span>}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-zinc-100 rounded text-zinc-800">
             {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
           </button>

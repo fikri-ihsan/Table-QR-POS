@@ -34,14 +34,14 @@ export default function LoginPage() {
       return;
     }
 
-    router.push(data.role === "kitchen" ? "/kitchen" : "/pos");
+    window.location.href = data.role === "kitchen" ? "/kitchen" : "/pos";
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-800">Saji POS</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-800">Laris POS</h1>
           <p className="text-sm text-zinc-800 mt-1">Masuk ke panel staff</p>
         </div>
 

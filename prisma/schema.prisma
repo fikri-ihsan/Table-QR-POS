@@ -10,11 +10,17 @@ datasource db {
 // ponytail: SQLite single-file. Swap to PostgreSQL when multi-server writes needed.
 
 model Outlet {
-  id        String   @id @default(cuid())
-  name      String
-  address   String?
-  phone     String?
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String
+  address        String?
+  phone          String?
+  taxEnabled     Boolean  @default(false)
+  taxRate        Int      @default(10)
+  taxLabel       String   @default("Pajak")
+  serviceEnabled Boolean  @default(false)
+  serviceRate    Int      @default(5)
+  serviceLabel   String   @default("Service")
+  createdAt      DateTime @default(now())
 
   tables     Table[]
   staff      Staff[]
@@ -102,6 +108,7 @@ model Order {
   type          String   @default("dine_in")
   subtotal      Int
   tax           Int      @default(0)
+  service       Int      @default(0)
   total         Int
   paymentStatus String   @default("pending")
   paymentMethod String?

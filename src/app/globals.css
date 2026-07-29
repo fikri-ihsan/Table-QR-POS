@@ -12,6 +12,16 @@ body {
 }
 
 @media print {
-  body { background: white !important; }
+  @page { size: 58mm auto; margin: 2mm; }
+  body { background: white !important; margin: 0 !important; }
   .no-print { display: none !important; }
+  .fixed.inset-0 { position: static !important; background: none !important; padding: 0 !important; font-size: 9px !important; }
+  .fixed.inset-0 > div > div { box-shadow: none !important; border: none !important; padding: 4px 0 !important; max-width: 48mm !important; width: 48mm !important; border-radius: 0 !important; }
+  .fixed.inset-0 .text-lg { font-size: 11px !important; }
+  .fixed.inset-0 .text-xs { font-size: 9px !important; }
+  .fixed.inset-0 .text-\[10px\] { font-size: 7px !important; }
+  .fixed.inset-0 .gap-3 { gap: 4px !important; }
+  .fixed.inset-0 .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 4px !important; }
+  .fixed.inset-0 .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 3px !important; }
+  .fixed.inset-0 .space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: 2px !important; }
 }

@@ -38,6 +38,11 @@ export async function POST(req: Request) {
     where: { outletId, number: body.tableId },
   }) : null;
 
+  const config = await prisma.outlet.findUnique({
+    where: { id: outletId },
+    select: { taxEnabled: true, taxRate: true, serviceEnabled: true, serviceRate: true },
+  });
+
   const order = await prisma.$transaction(async (tx) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -46,8 +51,9 @@ export async function POST(req: Request) {
     });
 
     const subtotal = body.items.reduce((s: number, i: { price: number; quantity: number }) => s + i.price * i.quantity, 0);
-    const tax = Math.round(subtotal * 0.1);
-    const total = subtotal + tax;
+    const tax = config?.taxEnabled ? Math.round(subtotal * (config.taxRate || 0) / 100) : 0;
+    const service = config?.serviceEnabled ? Math.round(subtotal * (config.serviceRate || 0) / 100) : 0;
+    const total = subtotal + tax + service;
 
     const order = await tx.order.create({
       data: {
@@ -60,6 +66,7 @@ export async function POST(req: Request) {
         customerName: body.customerName || null,
         subtotal,
         tax,
+        service,
         total,
         items: {
           create: body.items.map((i: { menuItemId: string; quantity: number; price: number; notes?: string }) => ({
@@ -70,11 +77,21 @@ export async function POST(req: Request) {
           })),
         },
       },
-      include: { items: true, table: true },
+      include: { items: { include: { menuItem: true } }, table: true, outlet: { select: { name: true, address: true } } },
     });
 
     if (table) {
       await tx.table.update({ where: { id: table.id }, data: { status: "occupied" } });
+    }
+
+    for (const item of body.items) {
+      const menuItem = await tx.menuItem.findUnique({ where: { id: item.menuItemId } });
+      if (menuItem?.stock !== null) {
+        await tx.menuItem.update({
+          where: { id: item.menuItemId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
     }
 
     return order;
@@ -97,8 +114,8 @@ export async function GET(req: Request) {
 
   const orders = await prisma.order.findMany({
     where,
-    include: { items: { include: { menuItem: true } }, table: true },
-    orderBy: { createdAt: "desc" },
+    include: { items: { include: { menuItem: true } }, table: true, outlet: { select: { name: true, address: true } } },
+    orderBy: { createdAt: "asc" },
     take: 50,
   });
 

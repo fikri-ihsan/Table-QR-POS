@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Saji POS - Management & Order System",
+  title: "Laris POS - Management & Order System",
   description: "Self-order, cashier, and kitchen display system for cafes & restaurants",
 };
 

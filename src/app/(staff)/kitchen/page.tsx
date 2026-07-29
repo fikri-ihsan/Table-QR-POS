@@ -7,7 +7,7 @@ type Staff = { id: string; outletId: string; name: string; role: string };
 type OrderItem = { id: string; menuItem: { name: string }; quantity: number; notes: string | null };
 type Order = {
   id: string; orderNumber: number; status: string; type: string;
-  customerName: string | null; items: OrderItem[];
+  customerName: string | null; items: OrderItem[]; paymentStatus: string;
   createdAt: string; table: { number: number } | null;
 };
 
@@ -27,7 +27,7 @@ export default function KitchenPage() {
     if (!staff) return;
     fetch(`/api/orders?outletId=${staff.outletId}`)
       .then((r) => r.json())
-      .then(setOrders);
+      .then((data) => setOrders(data.filter((o: Order) => o.paymentStatus === "paid")));
 
     // SSE
     const evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
@@ -35,6 +35,10 @@ export default function KitchenPage() {
       if (e.data === '{"type":"connected"}') return;
       try {
         const updated = JSON.parse(e.data);
+        if (updated.paymentStatus !== "paid") {
+          setOrders((prev) => prev.filter((o) => o.id !== updated.id));
+          return;
+        }
         setOrders((prev) => {
           const existing = prev.findIndex((o) => o.id === updated.id);
           if (existing >= 0) {
