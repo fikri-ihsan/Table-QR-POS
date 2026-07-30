@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import ErrorState from "@/components/error-state";
+import { SkeletonCard } from "@/components/skeleton";
 
 type Order = {
   id: string; ref: string; orderNumber: number; status: string; type: string;
@@ -38,20 +40,22 @@ export default function OrdersPage() {
   const [refundMode, setRefundMode] = useState<"full" | "partial">("full");
   const [refundSelection, setRefundSelection] = useState<Record<string, number>>({});
   const [refunding, setRefunding] = useState(false);
+  const [receiptOrder, setReceiptOrder] = useState<any>(null);
+  const [error, setError] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const loadOrders = async () => {
     if (staff?.role === "kitchen") { router.push("/kitchen"); return; }
     setLoading(true);
+    setError(false);
     try {
       const r = await fetch("/api/orders?take=20");
-      if (r.ok) {
-        const { orders: data, hasMore: more } = await r.json();
-        setOrders(data);
-        setHasMore(more);
-      }
+      if (!r.ok) throw new Error();
+      const { orders: data, hasMore: more } = await r.json();
+      setOrders(data);
+      setHasMore(more);
     } catch (e) {
-      console.error("Gagal load orders:", e);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -79,23 +83,31 @@ export default function OrdersPage() {
     if (!staff) return;
     loadOrders();
 
-    const evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
-    evt.onmessage = (e) => {
-      if (e.data === '{"type":"connected"}') return;
-      try {
-        const updated = JSON.parse(e.data);
-        setOrders((prev) => {
-          const existing = prev.findIndex((o) => o.id === updated.id);
-          if (existing >= 0) {
-            const next = [...prev];
-            next[existing] = updated;
-            return next;
-          }
-          return [updated, ...prev];
-        });
-      } catch {}
+    let evt: EventSource;
+    const connect = () => {
+      evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
+      evt.onmessage = (e) => {
+        if (e.data === '{"type":"connected"}') return;
+        try {
+          const updated = JSON.parse(e.data);
+          setOrders((prev) => {
+            const existing = prev.findIndex((o) => o.id === updated.id);
+            if (existing >= 0) {
+              const next = [...prev];
+              next[existing] = updated;
+              return next;
+            }
+            return [updated, ...prev];
+          });
+        } catch {}
+      };
+      evt.onerror = () => {
+        evt.close();
+        setTimeout(connect, 3000);
+      };
     };
-    return () => evt.close();
+    connect();
+    return () => evt?.close();
   }, [staff]);
 
   useEffect(() => {
@@ -112,6 +124,29 @@ export default function OrdersPage() {
     setRefundTarget(order);
     setRefundMode("full");
     setRefundSelection({});
+  };
+
+  const handlePrint = async (order: Order) => {
+    const r = await fetch(`/api/orders/${order.id}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    setReceiptOrder({
+      orderRef: data.ref,
+      orderNumber: data.orderNumber,
+      total: data.total,
+      subtotal: data.subtotal,
+      tax: data.tax,
+      service: data.service,
+      discount: data.discount || 0,
+      taxLabel: "Pajak",
+      serviceLabel: "Service",
+      customerName: data.customerName,
+      cashierName: data.staff?.name || data.outlet?.name || "Laris POS",
+      outletName: data.outlet?.name || "Laris POS",
+      outletAddress: data.outlet?.address || "",
+      createdAt: new Date(data.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+      items: data.items.map((i: any) => ({ name: i.menuItem?.name || "?", qty: i.quantity, price: i.price })),
+    });
   };
 
   const handleRefund = async () => {
@@ -136,8 +171,13 @@ export default function OrdersPage() {
   };
 
   if (authLoading || loading) return (
-    <div className="p-8 flex items-center justify-center min-h-screen">
-      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    <div className="p-6 max-w-6xl mx-auto space-y-3">
+      {[...Array(5)].map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  );
+  if (error) return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <ErrorState message="Gagal memuat pesanan" onRetry={loadOrders} />
     </div>
   );
 
@@ -158,7 +198,7 @@ export default function OrdersPage() {
 
       <div className="flex gap-2 mb-6 overflow-x-auto">
         {filterTabs.map((f) => (
-          <button key={f.key} onClick={() => setFilter(f.key)} className={`px-4 py-1.5 rounded-full text-xs whitespace-nowrap ${filter === f.key ? "bg-violet-600 text-white" : "bg-white border border-zinc-300 text-zinc-700"}`}>{f.label}</button>
+          <button key={f.key} onClick={() => setFilter(f.key)} className={`px-4 py-2.5 rounded-full text-xs whitespace-nowrap ${filter === f.key ? "bg-violet-600 text-white" : "bg-white border border-zinc-300 text-zinc-700"}`}>{f.label}</button>
         ))}
       </div>
 
@@ -175,6 +215,7 @@ export default function OrdersPage() {
                 {order.ref && <span className="ml-2 text-[10px] text-zinc-400 font-mono">· {order.ref}</span>}
                 <span className="ml-3 text-xs text-zinc-500">{order.table ? `Meja ${order.table.number}` : "Takeaway"}</span>
                 <span className="ml-2 text-xs text-zinc-500">{order.customerName}</span>
+                <span className="ml-2 text-xs text-zinc-400">{new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusLabels[order.status] ? "bg-violet-100 text-violet-700" : ""}`}>
@@ -197,8 +238,15 @@ export default function OrdersPage() {
 
             <div className="flex justify-between items-center pt-3 border-t border-zinc-100">
               <span className="font-bold text-sm text-zinc-800">Rp {order.total.toLocaleString("id-ID")}</span>
-              {expandedId === order.id && order.paymentStatus === "paid" && staff?.role === "admin" && (
-                <button onClick={(e) => { e.stopPropagation(); openRefund(order); }} className="px-3 py-1 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50">Refund</button>
+              {expandedId === order.id && (
+                <div className="flex gap-2">
+                  {order.paymentStatus === "paid" && (
+                    <button onClick={(e) => { e.stopPropagation(); handlePrint(order); }} className="px-3 py-2 rounded-lg border border-zinc-300 text-zinc-700 text-xs font-semibold hover:bg-zinc-50">Cetak Ulang</button>
+                  )}
+                  {order.paymentStatus === "paid" && staff?.role === "admin" && (
+                    <button onClick={(e) => { e.stopPropagation(); openRefund(order); }} className="px-3 py-2 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50">Refund</button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -238,9 +286,9 @@ export default function OrdersPage() {
                   <div key={item.id} className="flex items-center justify-between text-sm">
                     <span className="text-zinc-700">{item.quantity}x {item.menuItem.name}</span>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setRefundSelection((prev) => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))} className="w-7 h-7 rounded-full border border-zinc-300">-</button>
+                      <button onClick={() => setRefundSelection((prev) => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))} className="w-9 h-9 rounded-full border border-zinc-300">-</button>
                       <span className="w-5 text-center font-medium">{refundSelection[item.id] || 0}</span>
-                      <button onClick={() => setRefundSelection((prev) => ({ ...prev, [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1) }))} className="w-7 h-7 rounded-full border border-zinc-300">+</button>
+                      <button onClick={() => setRefundSelection((prev) => ({ ...prev, [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1) }))} className="w-9 h-9 rounded-full border border-zinc-300">+</button>
                     </div>
                   </div>
                 ))}
@@ -258,6 +306,50 @@ export default function OrdersPage() {
                 className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-40"
               >
                 {refunding ? "Memproses..." : "Refund"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {receiptOrder && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-10 p-4 overflow-y-auto receipt-print" onClick={() => setReceiptOrder(null)}>
+          <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
+              <div className="text-center">
+                <h3 className="font-bold text-zinc-800 text-lg">{receiptOrder.outletName}</h3>
+                {receiptOrder.outletAddress && <p className="text-[10px] text-zinc-400">{receiptOrder.outletAddress}</p>}
+              </div>
+
+              <div className="text-center border-t border-zinc-100 pt-3 space-y-1">
+                <p className="text-xs text-zinc-500 font-semibold">#{receiptOrder.orderNumber} · {receiptOrder.orderRef} · {receiptOrder.cashierName}</p>
+                <p className="text-[10px] text-zinc-400">{receiptOrder.createdAt}</p>
+                {receiptOrder.customerName && <p className="text-sm text-zinc-400 font-semibold">{receiptOrder.customerName}</p>}
+              </div>
+
+              <div className="border-t border-zinc-100 pt-4 space-y-2">
+                {receiptOrder.items.map((item: any, i: number) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-zinc-700"><span className="font-semibold">{item.qty}x</span> {item.name}</span>
+                    <span className="text-zinc-800">Rp {(item.price * item.qty).toLocaleString("id-ID")}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-zinc-100 pt-3 space-y-1 text-sm">
+                <div className="flex justify-between text-zinc-600"><span>Subtotal</span><span>Rp {receiptOrder.subtotal.toLocaleString("id-ID")}</span></div>
+                {receiptOrder.tax > 0 && <div className="flex justify-between text-zinc-600"><span>Pajak</span><span>Rp {receiptOrder.tax.toLocaleString("id-ID")}</span></div>}
+                {receiptOrder.service > 0 && <div className="flex justify-between text-zinc-600"><span>Service</span><span>Rp {receiptOrder.service.toLocaleString("id-ID")}</span></div>}
+                {receiptOrder.discount > 0 && <div className="flex justify-between text-red-600"><span>Diskon</span><span>-Rp {receiptOrder.discount.toLocaleString("id-ID")}</span></div>}
+                <div className="flex justify-between font-bold text-zinc-800 pt-1 border-t border-zinc-100"><span>Total Dibayar</span><span>Rp {receiptOrder.total.toLocaleString("id-ID")}</span></div>
+              </div>
+
+              <p className="text-center text-[10px] text-zinc-400 pt-2">Terima kasih! Selamat menikmati.</p>
+              <button onClick={() => window.print()} className="w-full py-3 rounded-xl border border-zinc-300 text-zinc-700 text-sm font-semibold hover:bg-zinc-50 no-print">
+                Print Invoice
+              </button>
+              <button onClick={() => setReceiptOrder(null)} className="w-full py-3 rounded-xl bg-violet-600 text-white font-semibold text-sm hover:bg-violet-700 no-print">
+                Tutup
               </button>
             </div>
           </div>

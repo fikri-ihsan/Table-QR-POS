@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/confirm-dialog";
+import ErrorState from "@/components/error-state";
+import { SkeletonGrid } from "@/components/skeleton";
 
 type Table = {
   id: string;
@@ -24,17 +26,19 @@ export default function TablesPage() {
   const [qrMap, setQrMap] = useState<Record<string, { url: string; image: string }>>({});
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadTables = async () => {
     const res = await fetch("/api/tables");
     setTables(await res.json());
     setLoading(false);
   };
+  const loadTablesCatch = async () => { try { await loadTables(); } catch { setError(true); setLoading(false); } };
 
   useEffect(() => {
     if (!staff) return;
     if (staff.role !== "admin") { router.push("/pos"); return; }
-    loadTables();
+    loadTablesCatch();
   }, [staff]);
 
   const handleAdd = async () => {
@@ -72,8 +76,13 @@ export default function TablesPage() {
   }, [tables.length]);
 
   if (authLoading || loading) return (
-    <div className="p-8 flex items-center justify-center min-h-screen">
-      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    <div className="p-6 max-w-4xl mx-auto">
+      <SkeletonGrid count={6} />
+    </div>
+  );
+  if (error) return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <ErrorState message="Gagal memuat data meja" onRetry={loadTablesCatch} />
     </div>
   );
 
@@ -155,7 +164,7 @@ export default function TablesPage() {
 
             <div className="flex justify-between text-xs pt-2 border-t border-zinc-100">
               <span className="text-zinc-800">ID: {table.id.slice(0, 8)}...</span>
-              <button onClick={() => setDeleteTarget(table.id)} className="text-red-500 hover:text-red-700 font-medium">Hapus</button>
+              <button onClick={() => setDeleteTarget(table.id)} className="text-red-500 hover:text-red-700 font-medium py-1 px-1.5 text-xs">Hapus</button>
             </div>
           </div>
         ))}

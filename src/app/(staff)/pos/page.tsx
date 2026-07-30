@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import { ShoppingCart } from "lucide-react";
 import Toast from "@/components/toast";
 
 type MenuItem = { id: string; name: string; price: number; image: string | null; stock: number | null; category: { name: string }; available: boolean };
@@ -31,6 +32,9 @@ export default function POSPage() {
   const [serviceLabel, setServiceLabel] = useState("Service");
   const [discountType, setDiscountType] = useState<"percent" | "nominal" | "">("");
   const [discountValue, setDiscountValue] = useState("");
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [cashModal, setCashModal] = useState(false);
+  const [cashReceived, setCashReceived] = useState("");
 
   useEffect(() => {
     if (!staff) return;
@@ -211,13 +215,77 @@ export default function POSPage() {
 
   if (authLoading || !staff) return null;
 
+  const cartContent = (
+    <>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {cart.length === 0 ? (
+          <p className="text-xs text-zinc-500 text-center pt-10">Belum ada item</p>
+        ) : (
+          cart.map((item) => (
+            <div key={item.id} className="border-b border-zinc-100 pb-3">
+              <div className="flex justify-between items-start">
+                <span className="text-base font-medium text-zinc-800">{item.name}</span>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => updateQty(item.id, -1)} className="w-10 h-10 rounded-full border border-zinc-300 flex items-center justify-center text-base">-</button>
+                  <span className="text-lg font-semibold text-zinc-800 w-5 text-center">{item.qty}</span>
+                  <button onClick={() => updateQty(item.id, 1)} className="w-10 h-10 rounded-full border border-zinc-300 flex items-center justify-center text-base">+</button>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-zinc-600">Rp {(item.price * item.qty).toLocaleString("id-ID")}</p>
+                <input type="text" placeholder="catatan" value={item.notes} onChange={(e) => setCart((prev) => prev.map((i) => i.id === item.id ? { ...i, notes: e.target.value } : i))} className="w-28 text-sm px-2 py-1.5 rounded-lg border border-zinc-200 text-zinc-800" />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="p-4 border-t border-zinc-100 space-y-3">
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between text-zinc-700"><span>Subtotal</span><span>Rp {subtotal.toLocaleString("id-ID")}</span></div>
+          {tax > 0 && <div className="flex justify-between text-zinc-700"><span>{taxLabel} {taxRate}%</span><span>Rp {tax.toLocaleString("id-ID")}</span></div>}
+          {serviceCharge > 0 && <div className="flex justify-between text-zinc-700"><span>{serviceLabel} {serviceRate}%</span><span>Rp {serviceCharge.toLocaleString("id-ID")}</span></div>}
+          {discountAmount > 0 && <div className="flex justify-between text-red-600"><span>Diskon {discountType === "percent" ? `(${discountValue}%)` : ""}</span><span>-Rp {discountAmount.toLocaleString("id-ID")}</span></div>}
+          <div className="flex justify-between font-bold text-sm text-zinc-800 pt-1 border-t border-zinc-100"><span>Total</span><span>Rp {total.toLocaleString("id-ID")}</span></div>
+        </div>
+
+        <div className="flex gap-2">
+          <select value={discountType} onChange={(e) => { setDiscountType(e.target.value as any); setDiscountValue(""); }} className="flex-1 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-700 bg-white">
+            <option value="">No Diskon</option>
+            <option value="percent">Diskon %</option>
+            <option value="nominal">Diskon Rp</option>
+          </select>
+          {discountType && (
+            <input type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
+              placeholder={discountType === "percent" ? "10" : "5000"}
+              className="w-24 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" min={0} />
+          )}
+        </div>
+        <input
+          type="text"
+          placeholder="Nama pemesan"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white"
+        />
+        <div className="text-center text-xs text-zinc-400">
+          {lastOrderNumber > 0 ? <span>Pesanan Terakhir: #{lastOrderNumber}</span> : todayCount > 0 && <span>Pesanan #{todayCount + 1}</span>}
+        </div>
+        <div className="space-y-2">
+          <button onClick={() => setCashModal(true)} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-green-600 text-white text-base font-semibold disabled:opacity-40">Tunai</button>
+          <button onClick={() => handleCheckout("qris")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-blue-600 text-white text-base font-semibold disabled:opacity-40">QRIS</button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
-    <div className="h-screen flex flex-col bg-zinc-50 no-print">
+    <div className="h-dvh flex flex-col bg-zinc-50 no-print">
       <header className="bg-white border-b border-zinc-200 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="font-bold text-zinc-800">Laris POS</h1>
-          <span className="text-xs text-zinc-500">{staff.name}</span>
+          <span className="text-xs text-zinc-500 hidden sm:inline">{staff.name}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setOrderType("dine_in")} className={`px-4 py-2 rounded-lg text-sm ${orderType === "dine_in" ? "bg-violet-600 text-white" : "border border-zinc-300 text-zinc-700"}`}>Dine In</button>
@@ -238,7 +306,7 @@ export default function POSPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {filteredItems.map((item) => (
               <button
                 key={item.id}
@@ -267,77 +335,91 @@ export default function POSPage() {
           </div>
         </div>
 
-        <div className="w-80 bg-white border-l border-zinc-200 flex flex-col">
-          <div className="p-4 border-b border-zinc-100">
-            <h2 className="font-semibold text-sm text-zinc-800">Pesanan {totalItems > 0 && `(${totalItems})`}</h2>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {cart.length === 0 ? (
-              <p className="text-xs text-zinc-500 text-center pt-10">Belum ada item</p>
-            ) : (
-              cart.map((item) => (
-                <div key={item.id} className="border-b border-zinc-100 pb-3">
-                  <div className="flex justify-between items-start">
-                    <span className="text-base font-medium text-zinc-800">{item.name}</span>
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => updateQty(item.id, -1)} className="w-9 h-9 rounded-full border border-zinc-300 flex items-center justify-center text-base">-</button>
-                      <span className="text-lg font-semibold text-zinc-800 w-5 text-center">{item.qty}</span>
-                      <button onClick={() => updateQty(item.id, 1)} className="w-9 h-9 rounded-full border border-zinc-300 flex items-center justify-center text-base">+</button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <p className="text-xs text-zinc-600">Rp {(item.price * item.qty).toLocaleString("id-ID")}</p>
-                    <input type="text" placeholder="catatan" value={item.notes} onChange={(e) => setCart((prev) => prev.map((i) => i.id === item.id ? { ...i, notes: e.target.value } : i))} className="w-28 text-sm px-2 py-1.5 rounded-lg border border-zinc-200 text-zinc-800" />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="p-4 border-t border-zinc-100 space-y-3">
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between text-zinc-700"><span>Subtotal</span><span>Rp {subtotal.toLocaleString("id-ID")}</span></div>
-              {tax > 0 && <div className="flex justify-between text-zinc-700"><span>{taxLabel} {taxRate}%</span><span>Rp {tax.toLocaleString("id-ID")}</span></div>}
-              {serviceCharge > 0 && <div className="flex justify-between text-zinc-700"><span>{serviceLabel} {serviceRate}%</span><span>Rp {serviceCharge.toLocaleString("id-ID")}</span></div>}
-              {discountAmount > 0 && <div className="flex justify-between text-red-600"><span>Diskon {discountType === "percent" ? `(${discountValue}%)` : ""}</span><span>-Rp {discountAmount.toLocaleString("id-ID")}</span></div>}
-              <div className="flex justify-between font-bold text-sm text-zinc-800 pt-1 border-t border-zinc-100"><span>Total</span><span>Rp {total.toLocaleString("id-ID")}</span></div>
-            </div>
-
-            <div className="flex gap-2">
-              <select value={discountType} onChange={(e) => { setDiscountType(e.target.value as any); setDiscountValue(""); }} className="flex-1 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-700 bg-white">
-                <option value="">No Diskon</option>
-                <option value="percent">Diskon %</option>
-                <option value="nominal">Diskon Rp</option>
-              </select>
-              {discountType && (
-                <input type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
-                  placeholder={discountType === "percent" ? "10" : "5000"}
-                  className="w-24 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" min={0} />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Nama pemesan"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white"
-            />
-            <div className="text-center text-xs text-zinc-400">
-              {lastOrderNumber > 0 ? <span>Pesanan Terakhir: #{lastOrderNumber}</span> : todayCount > 0 && <span>Pesanan #{todayCount + 1}</span>}
-            </div>
-            <div className="space-y-2">
-              <button onClick={() => handleCheckout("cash")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-green-600 text-white text-base font-semibold disabled:opacity-40">Tunai</button>
-              <button onClick={() => handleCheckout("qris")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-blue-600 text-white text-base font-semibold disabled:opacity-40">QRIS</button>
-            </div>
-          </div>
+        {/* Cart sidebar — desktop (lg+) */}
+        <div className="hidden lg:flex w-80 bg-white border-l border-zinc-200 flex-col">
+          {cartContent}
         </div>
       </div>
+
+      {/* Floating cart button — tablet/mobile */}
+      <button
+        onClick={() => setCartDrawerOpen(true)}
+        className="lg:hidden fixed bottom-4 right-4 z-30 bg-violet-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg relative"
+      >
+        <ShoppingCart size={20} />
+        {totalItems > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">{totalItems}</span>
+        )}
+      </button>
+
+      {/* Cart drawer — tablet/mobile */}
+      {cartDrawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCartDrawerOpen(false)} />
+          <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white flex flex-col">
+            <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
+              <h2 className="font-semibold text-sm text-zinc-800">Pesanan {totalItems > 0 && `(${totalItems})`}</h2>
+              <button onClick={() => setCartDrawerOpen(false)} className="p-2 hover:bg-zinc-100 rounded text-zinc-600">
+                <span className="text-lg">&times;</span>
+              </button>
+            </div>
+            {cartContent}
+          </div>
+        </div>
+      )}
     </div>
       {toast && <Toast message={toast} type={toastType} onClose={() => setToast(null)} />}
 
+      {cashModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => { setCashModal(false); setCashReceived(""); }}>
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-semibold text-zinc-800">Pembayaran Tunai</h2>
+            <div className="text-center">
+              <p className="text-xs text-zinc-500">Total</p>
+              <p className="text-2xl font-bold text-zinc-800">Rp {total.toLocaleString("id-ID")}</p>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-500 block mb-1">Uang Diterima</label>
+              <input type="number" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-lg font-bold text-zinc-800" autoFocus />
+            </div>
+            {cashReceived && Number(cashReceived) >= total && (
+              <div className="text-center bg-green-50 rounded-xl py-2">
+                <p className="text-xs text-green-600">Kembalian</p>
+                <p className="text-lg font-bold text-green-700">Rp {(Number(cashReceived) - total).toLocaleString("id-ID")}</p>
+              </div>
+            )}
+            {cashReceived && Number(cashReceived) < total && Number(cashReceived) > 0 && (
+              <p className="text-center text-xs text-red-500">Uang kurang Rp {(total - Number(cashReceived)).toLocaleString("id-ID")}</p>
+            )}
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => setCashReceived(String(total))}
+                className="flex-1 py-2 rounded-lg border border-zinc-300 text-xs text-zinc-700 hover:bg-zinc-50 min-w-[80px]">
+                Uang Pas
+              </button>
+              {[50000, 100000].filter((v) => v >= total).map((v) => (
+                <button key={v} onClick={() => setCashReceived(String(v))}
+                  className="flex-1 py-2 rounded-lg border border-zinc-300 text-xs text-zinc-700 hover:bg-zinc-50 min-w-[80px]">
+                  Rp {v.toLocaleString("id-ID")}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setCashModal(false); setCashReceived(""); }} className="flex-1 py-3 rounded-xl border border-zinc-300 text-sm">Batal</button>
+              <button
+                onClick={() => { handleCheckout("cash"); setCashModal(false); setCashReceived(""); }}
+                disabled={!cashReceived || Number(cashReceived) < total}
+                className="flex-1 py-3 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-40"
+              >
+                Bayar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {paidOrder && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-10 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-10 p-4 overflow-y-auto receipt-print">
           <div className="w-full max-w-sm">
             <div className="text-center mb-4 no-print">
               <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">

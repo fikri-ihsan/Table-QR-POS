@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import ErrorState from "@/components/error-state";
+import { SkeletonStats } from "@/components/skeleton";
 
 type Report = {
   totalRevenue: number;
@@ -19,18 +21,31 @@ export default function ReportsPage() {
   const router = useRouter();
   const [report, setReport] = useState<Report | null>(null);
   const [range, setRange] = useState("daily");
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!staff) return;
     if (staff.role !== "admin") { router.push("/pos"); return; }
     fetch(`/api/reports?type=${range}`)
       .then((r) => r.json())
-      .then(setReport);
+      .then(setReport)
+      .catch(() => setError(true));
   }, [staff, range]);
 
   if (!report) return (
-    <div className="p-8 flex items-center justify-center min-h-screen">
-      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <SkeletonStats />
+      <div className="bg-white border border-zinc-200 rounded-2xl p-5 h-64 animate-pulse">
+        <div className="h-4 bg-zinc-100 rounded w-24 mb-4" />
+        <div className="flex items-end gap-2 h-40">
+          {[...Array(7)].map((_, i) => <div key={i} className="flex-1 bg-zinc-100 rounded-t-md" style={{ height: `${20 + Math.random() * 60}%` }} />)}
+        </div>
+      </div>
+    </div>
+  );
+  if (error) return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <ErrorState message="Gagal memuat laporan" onRetry={() => window.location.reload()} />
     </div>
   );
 
@@ -69,14 +84,14 @@ export default function ReportsPage() {
             <option value="monthly">30 Hari</option>
           </select>
           <a href={`/api/reports?type=${range}&export=csv`} download
-            className="px-3 py-1.5 rounded-xl border border-zinc-300 text-xs text-zinc-700 hover:bg-zinc-50">
+            className="px-3 py-2 rounded-xl border border-zinc-300 text-xs text-zinc-700 hover:bg-zinc-50">
             CSV
           </a>
         </div>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-2xl p-5 border border-zinc-200">
           <p className="text-xs text-zinc-500">Total Penjualan</p>
           <p className="text-xl font-bold text-zinc-800 mt-1">Rp {report.totalRevenue.toLocaleString("id-ID")}</p>

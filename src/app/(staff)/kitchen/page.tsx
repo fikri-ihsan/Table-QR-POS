@@ -30,28 +30,36 @@ export default function KitchenPage() {
       .then((data) => setOrders((data.orders || data).filter((o: Order) => o.paymentStatus === "paid").sort((a: Order, b: Order) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())));
 
     // SSE
-    const evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
-    evt.onmessage = (e) => {
-      if (e.data === '{"type":"connected"}') return;
-      try {
-        const updated = JSON.parse(e.data);
-        if (updated.paymentStatus !== "paid") {
-          setOrders((prev) => prev.filter((o) => o.id !== updated.id));
-          return;
-        }
-        setOrders((prev) => {
-          const existing = prev.findIndex((o) => o.id === updated.id);
-          if (existing >= 0) {
-            const next = [...prev];
-            next[existing] = updated;
-            return next;
+    let evt: EventSource;
+    const connect = () => {
+      evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
+      evt.onmessage = (e) => {
+        if (e.data === '{"type":"connected"}') return;
+        try {
+          const updated = JSON.parse(e.data);
+          if (updated.paymentStatus !== "paid") {
+            setOrders((prev) => prev.filter((o) => o.id !== updated.id));
+            return;
           }
-          if (audioRef.current) audioRef.current.play().catch(() => {});
-          return [...prev, updated];
-        });
-      } catch {}
+          setOrders((prev) => {
+            const existing = prev.findIndex((o) => o.id === updated.id);
+            if (existing >= 0) {
+              const next = [...prev];
+              next[existing] = updated;
+              return next;
+            }
+            if (audioRef.current) audioRef.current.play().catch(() => {});
+            return [...prev, updated];
+          });
+        } catch {}
+      };
+      evt.onerror = () => {
+        evt.close();
+        setTimeout(connect, 3000);
+      };
     };
-    return () => evt.close();
+    connect();
+    return () => evt?.close();
   }, [staff]);
 
   const advanceStatus = async (orderId: string) => {
@@ -101,14 +109,14 @@ export default function KitchenPage() {
         </div>
         <button
           onClick={() => setIsDark(!isDark)}
-          className={`px-3 py-1.5 rounded-lg text-xs border ${isDark ? "border-zinc-700 text-zinc-400" : "border-zinc-300 text-zinc-600"}`}
+          className={`px-3 py-2 rounded-lg text-xs border ${isDark ? "border-zinc-700 text-zinc-400" : "border-zinc-300 text-zinc-600"}`}
         >
           {isDark ? "☀️" : "🌙"}
         </button>
       </div>
 
       {/* Kanban Columns */}
-      <div className="grid grid-cols-4 gap-4 p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
         {statusFlow.map((status) => (
           <div key={status}>
             <div className={`flex justify-between items-center px-4 py-2 rounded-xl mb-3 ${isDark ? "bg-zinc-900" : "bg-white shadow-sm border border-zinc-200"}`}>
@@ -147,6 +155,11 @@ export default function KitchenPage() {
                         min > 20 ? "bg-red-500/10 text-red-500" : min > 10 ? "bg-amber-500/10 text-amber-500" : isDark ? "bg-blue-500/10 text-blue-400" : "bg-blue-50 text-blue-600"
                       }`}>{min}m</span>
                     </div>
+                    {order.status !== "delivered" && (
+                      <p className={`text-[9px] text-center mt-1.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                        Ketuk → {statusLabels[statusFlow[statusFlow.indexOf(order.status) + 1]]}
+                      </p>
+                    )}
                   </div>
                 );
               })}

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import ErrorState from "@/components/error-state";
+import { SkeletonTable } from "@/components/skeleton";
 
 type InventoryItem = {
   id: string; name: string; stock: number | null;
@@ -15,6 +17,7 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState(false);
   const [stockTarget, setStockTarget] = useState<InventoryItem | null>(null);
   const [stockValue, setStockValue] = useState("");
 
@@ -24,6 +27,7 @@ export default function InventoryPage() {
     fetch("/api/inventory")
       .then((r) => r.json())
       .then(setItems)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [staff]);
 
@@ -37,8 +41,13 @@ export default function InventoryPage() {
   };
 
   if (authLoading || loading) return (
-    <div className="p-8 flex items-center justify-center min-h-screen">
-      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    <div className="p-6 max-w-4xl mx-auto">
+      <SkeletonTable rows={4} />
+    </div>
+  );
+  if (error) return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <ErrorState message="Gagal memuat inventory" onRetry={() => window.location.reload()} />
     </div>
   );
 
@@ -67,6 +76,7 @@ export default function InventoryPage() {
       )}
 
       <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 border-b border-zinc-200">
             <tr>
@@ -104,6 +114,7 @@ export default function InventoryPage() {
           </tbody>
           )}
         </table>
+        </div>
       </div>
     </div>
 

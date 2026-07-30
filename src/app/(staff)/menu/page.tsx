@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
 import ConfirmDialog from "@/components/confirm-dialog";
+import ErrorState from "@/components/error-state";
+import { SkeletonTable } from "@/components/skeleton";
 
 type Category = { id: string; name: string; sortOrder: number };
 type MenuItem = {
@@ -42,6 +44,7 @@ export default function MenuPage() {
   const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState(false);
 
   // Category modal state
   const [showCatModal, setShowCatModal] = useState(false);
@@ -65,9 +68,13 @@ export default function MenuPage() {
     reloadCategories();
   };
 
-  const removeCat = async (id: string) => {
-    const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
-    if (!res.ok) { const err = await res.json(); alert(err.error); return; }
+  const [deleteCatTarget, setDeleteCatTarget] = useState<string | null>(null);
+
+  const removeCat = async () => {
+    if (!deleteCatTarget) return;
+    const res = await fetch(`/api/categories/${deleteCatTarget}`, { method: "DELETE" });
+    if (!res.ok) { const err = await res.json(); alert(err.error); }
+    setDeleteCatTarget(null);
     reloadCategories();
   };
 
@@ -93,6 +100,9 @@ export default function MenuPage() {
     ]).then(([cats, items]) => {
       setCategories(cats);
       setItems(items);
+      setLoading(false);
+    }).catch(() => {
+      setError(true);
       setLoading(false);
     });
   }, [staff]);
@@ -171,8 +181,13 @@ export default function MenuPage() {
   };
 
   if (authLoading || loading || !staff) return (
-    <div className="p-8 flex items-center justify-center min-h-screen">
-      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    <div className="p-6 max-w-5xl mx-auto">
+      <SkeletonTable />
+    </div>
+  );
+  if (error) return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <ErrorState message="Gagal memuat menu" onRetry={() => window.location.reload()} />
     </div>
   );
 
@@ -238,7 +253,7 @@ export default function MenuPage() {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-800 mb-1">Stock</label>
                 <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" placeholder="Kosongkan = unlimited" min={0} />
@@ -259,6 +274,7 @@ export default function MenuPage() {
       )}
 
       <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 border-b border-zinc-200">
             <tr>
@@ -290,7 +306,7 @@ export default function MenuPage() {
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => toggleAvailable(item)}
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${item.available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                   >
                     {item.available ? "Aktif" : "Nonaktif"}
                   </button>
@@ -298,9 +314,8 @@ export default function MenuPage() {
                 <td className="px-4 py-3 text-right">
                   {staff?.role === "admin" ? (
                     <>
-                      <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold">Edit</button>
-                      <span className="text-zinc-300 mx-1">|</span>
-                      <button onClick={() => setDeleteTarget(item)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                      <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold py-1 px-1.5">Edit</button>
+                      <button onClick={() => setDeleteTarget(item)} className="text-red-600 hover:text-red-800 text-xs font-semibold py-1 px-1.5">Hapus</button>
                     </>
                   ) : <span className="text-zinc-300 text-xs">-</span>}
                 </td>
@@ -309,6 +324,7 @@ export default function MenuPage() {
           </tbody>
           )}
         </table>
+        </div>
       </div>
     </div>
 
@@ -372,17 +388,26 @@ export default function MenuPage() {
                   )}
                   <button
                     onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }}
-                    className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                    className="text-blue-600 hover:text-blue-800 text-xs font-semibold py-1 px-1.5"
                   >
                     Rename
                   </button>
-                  <button onClick={() => removeCat(cat.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                  <button onClick={() => setDeleteCatTarget(cat.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold py-1 px-1.5">Hapus</button>
                 </div>
               ))}
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteCatTarget}
+        title="Hapus Kategori"
+        onConfirm={removeCat}
+        onCancel={() => setDeleteCatTarget(null)}
+      >
+        <p className="text-sm text-zinc-600">Yakin hapus kategori ini? Menu dengan kategori ini mungkin terpengaruh.</p>
+      </ConfirmDialog>
     </>
   );
 }

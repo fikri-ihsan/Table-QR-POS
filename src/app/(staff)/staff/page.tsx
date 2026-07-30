@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/confirm-dialog";
+import ErrorState from "@/components/error-state";
+import { SkeletonTable } from "@/components/skeleton";
 
 type Staff = { id: string; name: string; role: string; active: boolean; createdAt: string };
 type EditTarget = Staff | null;
@@ -23,13 +25,14 @@ export default function StaffPage() {
   const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState(false);
 
   const load = () => fetch("/api/staff").then((r) => r.json()).then(setStaffList);
 
   useEffect(() => {
     if (!staff) return;
     if (staff.role !== "admin") { router.push("/pos"); return; }
-    load().then(() => setLoading(false));
+    load().then(() => setLoading(false)).catch(() => { setError(true); setLoading(false); });
   }, [staff]);
 
   const handleAdd = async () => {
@@ -80,8 +83,13 @@ export default function StaffPage() {
   };
 
   if (authLoading || loading) return (
-    <div className="p-8 flex items-center justify-center min-h-screen">
-      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    <div className="p-6 max-w-4xl mx-auto">
+      <SkeletonTable />
+    </div>
+  );
+  if (error) return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <ErrorState message="Gagal memuat data staff" onRetry={() => window.location.reload()} />
     </div>
   );
 
@@ -109,6 +117,7 @@ export default function StaffPage() {
       )}
 
       <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 border-b border-zinc-200">
             <tr>
@@ -127,19 +136,20 @@ export default function StaffPage() {
                 <td className="px-4 py-3 font-medium text-zinc-800">{s.name}</td>
                 <td className="px-4 py-3 text-zinc-700 capitalize">{roleLabel[s.role] || s.role}</td>
                 <td className="px-4 py-3 text-center">
-                  <button onClick={() => toggleActive(s)} className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.active ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"}`}>
+                  <button onClick={() => toggleActive(s)} className={`px-3 py-1.5 rounded-full text-xs font-medium ${s.active ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"}`}>
                     {s.active ? "Aktif" : "Nonaktif"}
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => openEdit(s)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-3">Edit</button>
-                  <button onClick={() => setDeleteTarget(s)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                  <button onClick={() => openEdit(s)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold py-1 px-1.5">Edit</button>
+                  <button onClick={() => setDeleteTarget(s)} className="text-red-600 hover:text-red-800 text-xs font-semibold py-1 px-1.5">Hapus</button>
                 </td>
               </tr>
             ))}
           </tbody>
           )}
         </table>
+        </div>
       </div>
     </div>
 

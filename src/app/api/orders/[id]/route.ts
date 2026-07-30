@@ -64,7 +64,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: { include: { menuItem: true } }, table: true },
+    include: { items: { include: { menuItem: true } }, table: true, outlet: { select: { name: true, address: true } }, staff: { select: { name: true } } },
   });
   return NextResponse.json(order);
 }
