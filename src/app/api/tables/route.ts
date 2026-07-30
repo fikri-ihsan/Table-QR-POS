@@ -28,6 +28,9 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
+  if (!body.number) {
+    return NextResponse.json({ error: "Nomor meja harus diisi" }, { status: 400 });
+  }
   const table = await prisma.table.create({
     data: {
       outletId: staff.outletId,

@@ -53,7 +53,10 @@ export async function POST(req: Request) {
     const subtotal = body.items.reduce((s: number, i: { price: number; quantity: number }) => s + i.price * i.quantity, 0);
     const tax = config?.taxEnabled ? Math.round(subtotal * (config.taxRate || 0) / 100) : 0;
     const service = config?.serviceEnabled ? Math.round(subtotal * (config.serviceRate || 0) / 100) : 0;
-    const total = subtotal + tax + service;
+    const discountType = body.discountType || null;
+    const discountValue = body.discount || 0;
+    const discountAmount = discountType === "percent" ? Math.round(subtotal * discountValue / 100) : discountType === "nominal" ? discountValue : 0;
+    const total = Math.max(0, subtotal + tax + service - discountAmount);
 
     const order = await tx.order.create({
       data: {
@@ -67,6 +70,8 @@ export async function POST(req: Request) {
         subtotal,
         tax,
         service,
+        discountType,
+        discount: discountAmount,
         total,
         items: {
           create: body.items.map((i: { menuItemId: string; quantity: number; price: number; notes?: string }) => ({
@@ -108,6 +113,8 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
+  const cursor = searchParams.get("cursor");
+  const take = parseInt(searchParams.get("take") || "20");
 
   const where: Record<string, unknown> = { outletId: staff.outletId };
   if (status) where.status = status;
@@ -115,9 +122,13 @@ export async function GET(req: Request) {
   const orders = await prisma.order.findMany({
     where,
     include: { items: { include: { menuItem: true } }, table: true, outlet: { select: { name: true, address: true } } },
-    orderBy: { createdAt: "asc" },
-    take: 50,
+    orderBy: { createdAt: "desc" },
+    take: take + 1,
+    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
   });
 
-  return NextResponse.json(orders);
+  const hasMore = orders.length > take;
+  if (hasMore) orders.pop();
+
+  return NextResponse.json({ orders, hasMore });
 }

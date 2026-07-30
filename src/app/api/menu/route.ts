@@ -32,6 +32,9 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
+  if (!body.name || !body.categoryId || body.price < 1) {
+    return NextResponse.json({ error: "Nama, kategori, dan harga harus diisi" }, { status: 400 });
+  }
   const item = await prisma.menuItem.create({
     data: {
       outletId: staff.outletId,

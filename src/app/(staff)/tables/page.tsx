@@ -38,6 +38,7 @@ export default function TablesPage() {
   }, [staff]);
 
   const handleAdd = async () => {
+    if (!newNumber) return;
     await fetch("/api/tables", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -70,7 +71,11 @@ export default function TablesPage() {
     tables.forEach((t) => { if (t.qrCode) generateQR(t.id, true); });
   }, [tables.length]);
 
-  if (authLoading || loading) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
+  if (authLoading || loading) return (
+    <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    </div>
+  );
 
   return (
     <>
@@ -91,7 +96,7 @@ export default function TablesPage() {
         <div className="bg-white border border-zinc-200 rounded-2xl p-6 mb-6 flex gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-zinc-800 mb-1">Nomor Meja</label>
-            <input type="number" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} className="w-32 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+            <input type="number" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} className="w-32 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-800 mb-1">Kapasitas</label>
@@ -102,6 +107,9 @@ export default function TablesPage() {
         </div>
       )}
 
+      {tables.length === 0 ? (
+        <p className="text-center text-zinc-400 py-10 text-sm">Belum ada meja. Tambah meja baru untuk memulai.</p>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {tables.map((table) => (
           <div key={table.id} className="bg-white border border-zinc-200 rounded-2xl p-5 space-y-3">
@@ -152,6 +160,7 @@ export default function TablesPage() {
           </div>
         ))}
       </div>
+      )}
     </div>
 
       <ConfirmDialog

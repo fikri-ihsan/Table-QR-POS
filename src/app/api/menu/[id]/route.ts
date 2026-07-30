@@ -14,6 +14,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const body = await req.json();
 
+  if (body.name !== undefined && !body.name) {
+    return NextResponse.json({ error: "Nama tidak boleh kosong" }, { status: 400 });
+  }
+  if (body.price !== undefined && body.price < 1) {
+    return NextResponse.json({ error: "Harga minimal 1" }, { status: 400 });
+  }
+
   const existing = await prisma.menuItem.findUnique({ where: { id } });
 
   if (existing?.image && body.image && existing.image !== body.image) {

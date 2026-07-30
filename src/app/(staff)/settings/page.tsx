@@ -51,7 +51,11 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 3000);
   };
 
-  if (authLoading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  if (authLoading) return (
+    <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    </div>
+  );
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -89,7 +93,7 @@ export default function SettingsPage() {
               </div>
               <div className="w-24">
                 <label className="block text-xs font-medium text-zinc-700 mb-1">Rate (%)</label>
-                <input type="number" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+                <input type="number" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" min={0} />
               </div>
             </div>
           )}
@@ -109,7 +113,7 @@ export default function SettingsPage() {
               </div>
               <div className="w-24">
                 <label className="block text-xs font-medium text-zinc-700 mb-1">Rate (%)</label>
-                <input type="number" value={serviceRate} onChange={(e) => setServiceRate(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+                <input type="number" value={serviceRate} onChange={(e) => setServiceRate(Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" min={0} />
               </div>
             </div>
           )}

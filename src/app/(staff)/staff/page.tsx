@@ -34,6 +34,7 @@ export default function StaffPage() {
 
   const handleAdd = async () => {
     if (staff?.role !== "admin") return;
+    if (!form.name.trim() || !form.pin) return;
     await fetch("/api/staff", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -78,7 +79,11 @@ export default function StaffPage() {
     load();
   };
 
-  if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  if (authLoading || loading) return (
+    <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    </div>
+  );
 
   const roleLabel: Record<string, string> = { admin: "Admin", cashier: "Kasir", kitchen: "Dapur" };
 
@@ -93,8 +98,8 @@ export default function StaffPage() {
 
       {showForm && (
         <div className="bg-white border border-zinc-200 rounded-2xl p-4 mb-6 flex gap-3 items-end">
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-40" /></div>
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">PIN</label><input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-32" /></div>
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-40" required /></div>
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">PIN</label><input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-32" required /></div>
           <div><label className="text-xs font-medium text-zinc-700 block mb-1">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white">
             <option value="cashier">Kasir</option><option value="kitchen">Dapur</option><option value="admin">Admin</option>
           </select></div>
@@ -113,6 +118,9 @@ export default function StaffPage() {
               <th className="text-right px-4 py-3 font-semibold text-zinc-800">Aksi</th>
             </tr>
           </thead>
+          {staffList.length === 0 ? (
+            <tbody><tr><td colSpan={4} className="text-center text-zinc-400 py-10 text-sm">Belum ada staff. Tambah staff baru untuk memulai.</td></tr></tbody>
+          ) : (
           <tbody className="divide-y divide-zinc-100">
             {staffList.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
               <tr key={s.id} className="hover:bg-zinc-50">
@@ -130,6 +138,7 @@ export default function StaffPage() {
               </tr>
             ))}
           </tbody>
+          )}
         </table>
       </div>
     </div>

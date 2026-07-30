@@ -25,6 +25,9 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
+  if (!body.name) {
+    return NextResponse.json({ error: "Nama kategori harus diisi" }, { status: 400 });
+  }
   const maxSort = await prisma.category.findFirst({
     where: { outletId: staff.outletId },
     orderBy: { sortOrder: "desc" },

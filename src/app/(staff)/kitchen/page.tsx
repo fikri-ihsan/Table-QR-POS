@@ -25,9 +25,9 @@ export default function KitchenPage() {
 
   useEffect(() => {
     if (!staff) return;
-    fetch(`/api/orders?outletId=${staff.outletId}`)
+    fetch(`/api/orders`)
       .then((r) => r.json())
-      .then((data) => setOrders(data.filter((o: Order) => o.paymentStatus === "paid")));
+      .then((data) => setOrders((data.orders || data).filter((o: Order) => o.paymentStatus === "paid").sort((a: Order, b: Order) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())));
 
     // SSE
     const evt = new EventSource(`/api/orders/sse?outletId=${staff.outletId}`);
@@ -47,7 +47,7 @@ export default function KitchenPage() {
             return next;
           }
           if (audioRef.current) audioRef.current.play().catch(() => {});
-          return [updated, ...prev];
+          return [...prev, updated];
         });
       } catch {}
     };
@@ -82,7 +82,12 @@ export default function KitchenPage() {
     return { border: isDark ? "border-blue-500" : "border-blue-400", min };
   };
 
-  if (authLoading || !staff) return null;
+  if (authLoading) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-700 border-t-emerald-400 rounded-full" />
+    </div>
+  );
+  if (!staff) return null;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? "bg-zinc-950 text-white" : "bg-zinc-50 text-zinc-800"}`}>

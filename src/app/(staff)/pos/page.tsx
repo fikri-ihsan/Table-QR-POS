@@ -29,6 +29,8 @@ export default function POSPage() {
   const [serviceEnabled, setServiceEnabled] = useState(false);
   const [serviceRate, setServiceRate] = useState(5);
   const [serviceLabel, setServiceLabel] = useState("Service");
+  const [discountType, setDiscountType] = useState<"percent" | "nominal" | "">("");
+  const [discountValue, setDiscountValue] = useState("");
 
   useEffect(() => {
     if (!staff) return;
@@ -43,9 +45,10 @@ export default function POSPage() {
         setServiceLabel(o.serviceLabel || "Service");
       }
     }).catch(() => {});
-    fetch("/api/orders").then((r) => r.json()).then((orders: { createdAt: string }[]) => {
+    fetch("/api/orders").then((r) => r.json()).then((data) => {
+      const orders = data.orders || data;
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      setTodayCount(orders.filter((o) => new Date(o.createdAt) >= today).length);
+      setTodayCount(orders.filter((o: { createdAt: string }) => new Date(o.createdAt) >= today).length);
     }).catch(() => {});
   }, [staff]);
 
@@ -101,7 +104,8 @@ export default function POSPage() {
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
   const tax = taxEnabled ? Math.round(subtotal * taxRate / 100) : 0;
   const serviceCharge = serviceEnabled ? Math.round(subtotal * serviceRate / 100) : 0;
-  const total = subtotal + tax + serviceCharge;
+  const discountAmount = discountType === "percent" ? Math.round(subtotal * Number(discountValue) / 100) : discountType === "nominal" ? Number(discountValue) : 0;
+  const total = Math.max(0, subtotal + tax + serviceCharge - discountAmount);
   const totalItems = cart.reduce((sum, i) => sum + i.qty, 0);
 
   const filteredItems = selectedCat === "Semua"
@@ -119,6 +123,8 @@ export default function POSPage() {
         staffId: staff!.id,
         type: orderType,
         customerName: customerName || null,
+        discountType: discountType || null,
+        discount: discountValue ? Number(discountValue) : 0,
         items: cart.map((i) => ({ menuItemId: i.id, quantity: i.qty, price: i.price, notes: i.notes || null })),
       }),
     });
@@ -137,6 +143,8 @@ export default function POSPage() {
         body: JSON.stringify({ status: "received", paymentStatus: "paid", paymentMethod: "cash" }),
       });
       setCart([]);
+      setDiscountType("");
+      setDiscountValue("");
       setPaidOrder({
         orderRef: order.ref,
         orderNumber: order.orderNumber,
@@ -144,6 +152,8 @@ export default function POSPage() {
         subtotal: order.subtotal,
         tax: orderTax,
         service: orderService,
+        discount: discountAmount,
+        discountLabel: discountType === "percent" ? `Diskon ${discountValue}%` : discountAmount > 0 ? "Diskon" : null,
         taxLabel,
         serviceLabel,
         customerName: customerName || null,
@@ -161,6 +171,8 @@ export default function POSPage() {
         subtotal: order.subtotal,
         tax: orderTax,
         service: orderService,
+        discount: discountAmount,
+        discountLabel: discountType === "percent" ? `Diskon ${discountValue}%` : discountAmount > 0 ? "Diskon" : null,
         taxLabel,
         serviceLabel,
         customerName: customerName || null,
@@ -184,6 +196,8 @@ export default function POSPage() {
       if (payData.redirectUrl) {
         window.open(payData.redirectUrl, "_blank");
         setCart([]);
+        setDiscountType("");
+        setDiscountValue("");
         setToast(`✓ Pesanan #${order.orderNumber} — Silakan selesaikan pembayaran di tab baru.`);
         setToastType("success");
       } else {
@@ -286,9 +300,22 @@ export default function POSPage() {
               <div className="flex justify-between text-zinc-700"><span>Subtotal</span><span>Rp {subtotal.toLocaleString("id-ID")}</span></div>
               {tax > 0 && <div className="flex justify-between text-zinc-700"><span>{taxLabel} {taxRate}%</span><span>Rp {tax.toLocaleString("id-ID")}</span></div>}
               {serviceCharge > 0 && <div className="flex justify-between text-zinc-700"><span>{serviceLabel} {serviceRate}%</span><span>Rp {serviceCharge.toLocaleString("id-ID")}</span></div>}
+              {discountAmount > 0 && <div className="flex justify-between text-red-600"><span>Diskon {discountType === "percent" ? `(${discountValue}%)` : ""}</span><span>-Rp {discountAmount.toLocaleString("id-ID")}</span></div>}
               <div className="flex justify-between font-bold text-sm text-zinc-800 pt-1 border-t border-zinc-100"><span>Total</span><span>Rp {total.toLocaleString("id-ID")}</span></div>
             </div>
 
+            <div className="flex gap-2">
+              <select value={discountType} onChange={(e) => { setDiscountType(e.target.value as any); setDiscountValue(""); }} className="flex-1 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-700 bg-white">
+                <option value="">No Diskon</option>
+                <option value="percent">Diskon %</option>
+                <option value="nominal">Diskon Rp</option>
+              </select>
+              {discountType && (
+                <input type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
+                  placeholder={discountType === "percent" ? "10" : "5000"}
+                  className="w-24 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" min={0} />
+              )}
+            </div>
             <input
               type="text"
               placeholder="Nama pemesan"
@@ -344,6 +371,7 @@ export default function POSPage() {
                 <div className="flex justify-between text-zinc-600"><span>Subtotal</span><span>Rp {paidOrder.subtotal.toLocaleString("id-ID")}</span></div>
                 <div className="flex justify-between text-zinc-600"><span>{paidOrder.taxLabel || "Pajak"}</span><span>Rp {paidOrder.tax.toLocaleString("id-ID")}</span></div>
                 {paidOrder.service > 0 && <div className="flex justify-between text-zinc-600"><span>{paidOrder.serviceLabel || "Service"}</span><span>Rp {paidOrder.service.toLocaleString("id-ID")}</span></div>}
+                {paidOrder.discount > 0 && <div className="flex justify-between text-red-600"><span>{paidOrder.discountLabel || "Diskon"}</span><span>-Rp {paidOrder.discount.toLocaleString("id-ID")}</span></div>}
                 <div className="flex justify-between font-bold text-zinc-800 pt-1 border-t border-zinc-100"><span>Total Dibayar</span><span>Rp {paidOrder.total.toLocaleString("id-ID")}</span></div>
               </div>
 

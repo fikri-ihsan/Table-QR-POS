@@ -110,6 +110,8 @@ model Order {
   tax           Int      @default(0)
   service       Int      @default(0)
   total         Int
+  discountType  String?  // "percent" | "nominal"
+  discount      Int?     // amount (nominal) or percent value
   paymentStatus String   @default("pending")
   paymentMethod String?
   midtransId    String?  // Midtrans transaction ID

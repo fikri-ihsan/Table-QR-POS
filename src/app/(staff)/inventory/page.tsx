@@ -36,7 +36,11 @@ export default function InventoryPage() {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, stock } : i)));
   };
 
-  if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  if (authLoading || loading) return (
+    <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    </div>
+  );
 
   const lowStockItems = items.filter((i) => i.stock !== null && i.lowStockAt !== null && i.stock <= i.lowStockAt);
 
@@ -72,6 +76,9 @@ export default function InventoryPage() {
               <th className="text-right px-4 py-3 font-semibold text-zinc-800">Aksi</th>
             </tr>
           </thead>
+          {items.length === 0 ? (
+            <tbody><tr><td colSpan={4} className="text-center text-zinc-400 py-10 text-sm">Belum ada item inventory.</td></tr></tbody>
+          ) : (
           <tbody className="divide-y divide-zinc-100">
             {items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())).map((item) => (
               <tr key={item.id} className="hover:bg-zinc-50">
@@ -95,6 +102,7 @@ export default function InventoryPage() {
               </tr>
             ))}
           </tbody>
+          )}
         </table>
       </div>
     </div>
@@ -109,7 +117,7 @@ export default function InventoryPage() {
               className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" autoFocus />
             <div className="flex gap-2 justify-end">
               <button onClick={() => setStockTarget(null)} className="px-4 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-700">Batal</button>
-              <button onClick={() => { updateStock(stockTarget.id, parseInt(stockValue)); setStockTarget(null); }}
+              <button onClick={() => { if (!stockValue) return; updateStock(stockTarget.id, parseInt(stockValue)); setStockTarget(null); }}
                 className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold">Simpan</button>
             </div>
           </div>

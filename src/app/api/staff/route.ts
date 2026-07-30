@@ -26,6 +26,9 @@ export async function POST(req: Request) {
   if (!staff || staff.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
+  if (!body.name || !body.pin) {
+    return NextResponse.json({ error: "Nama dan PIN harus diisi" }, { status: 400 });
+  }
   const hashed = await hashPassword(body.pin);
 
   const newStaff = await prisma.staff.create({

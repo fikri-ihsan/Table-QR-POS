@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { ShoppingCart, ChefHat, ClipboardList, Coffee, Tags, Grid3x3, Users, Package, BarChart3, Settings, X, Menu, LogOut } from "lucide-react";
+import { ShoppingCart, ChefHat, ClipboardList, Coffee, Grid3x3, Users, Package, BarChart3, Settings, X, Menu, LogOut } from "lucide-react";
 
 const publicPaths = ["/login"];
 
@@ -13,7 +13,6 @@ const navItems = [
   { label: "Dapur", href: "/kitchen", icon: ChefHat, roles: ["admin", "cashier", "kitchen"], group: 1 },
   { label: "Pesanan", href: "/orders", icon: ClipboardList, roles: ["admin", "cashier"], group: 1 },
   { label: "Meja", href: "/tables", icon: Grid3x3, roles: ["admin"], group: 2 },
-  { label: "Kategori", href: "/categories", icon: Tags, roles: ["admin"], group: 2 },
   { label: "Menu", href: "/menu", icon: Coffee, roles: ["admin"], group: 2 },
   { label: "Staff", href: "/staff", icon: Users, roles: ["admin"], group: 3 },
   { label: "Inventory", href: "/inventory", icon: Package, roles: ["admin"], group: 3 },

@@ -43,6 +43,47 @@ export default function MenuPage() {
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Category modal state
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState("");
+
+  const reloadCategories = () => fetch("/api/categories").then((r) => r.json()).then(setCategories);
+
+  const addCat = async () => {
+    if (!newCatName.trim()) return;
+    await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCatName }) });
+    setNewCatName("");
+    reloadCategories();
+  };
+
+  const renameCat = async (id: string) => {
+    if (!editingCatName.trim()) return;
+    await fetch(`/api/categories/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: editingCatName }) });
+    setEditingCatId(null);
+    reloadCategories();
+  };
+
+  const removeCat = async (id: string) => {
+    const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+    if (!res.ok) { const err = await res.json(); alert(err.error); return; }
+    reloadCategories();
+  };
+
+  const moveCatSort = async (id: string, dir: number) => {
+    const idx = categories.findIndex((c) => c.id === id);
+    const target = idx + dir;
+    if (target < 0 || target >= categories.length) return;
+    const current = categories[idx];
+    const neighbor = categories[target];
+    await Promise.all([
+      fetch(`/api/categories/${current.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: neighbor.sortOrder }) }),
+      fetch(`/api/categories/${neighbor.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: current.sortOrder }) }),
+    ]);
+    reloadCategories();
+  };
+
   useEffect(() => {
     if (!staff) return;
     if (staff.role !== "admin") { router.push("/pos"); return; }
@@ -58,6 +99,7 @@ export default function MenuPage() {
 
   const handleSave = async () => {
     if (staff?.role !== "admin") return;
+    if (!form.name.trim() || !form.price) return;
     const payload = {
       name: form.name,
       description: form.description || null,
@@ -128,7 +170,11 @@ export default function MenuPage() {
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, available: !i.available } : i)));
   };
 
-  if (authLoading || loading || !staff) return <div className="p-8 text-center text-zinc-800">Loading...</div>;
+  if (authLoading || loading || !staff) return (
+    <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    </div>
+  );
 
   return (
     <>
@@ -137,12 +183,20 @@ export default function MenuPage() {
         <h1 className="text-2xl font-bold text-zinc-800">Menu Items</h1>
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari menu..." className="w-48 px-3 py-1.5 rounded-xl border border-zinc-300 text-sm bg-white text-zinc-800 placeholder-zinc-400 ml-auto" />
         {staff?.role === "admin" && (
+          <>
+          <button
+            onClick={() => setShowCatModal(true)}
+            className="px-4 py-2 rounded-xl bg-violet-100 text-sm text-violet-700 hover:bg-violet-200"
+          >
+            Kelola Kategori
+          </button>
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null); setImageUrl(null); setForm({ name: "", description: "", price: "", categoryId: "", stock: "", lowStockAt: "" }); }}
             className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
           >
             + Tambah Item
           </button>
+          </>
         )}
       </div>
 
@@ -152,11 +206,11 @@ export default function MenuPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Nama</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Harga (Rp)</label>
-              <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+              <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required min={1} />
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-zinc-800 mb-1">Deskripsi</label>
@@ -187,11 +241,11 @@ export default function MenuPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-800 mb-1">Stock</label>
-                <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" placeholder="Kosongkan = unlimited" />
+                <input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" placeholder="Kosongkan = unlimited" min={0} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-800 mb-1">Min. Stock Alert</label>
-                <input type="number" value={form.lowStockAt} onChange={(e) => setForm({ ...form, lowStockAt: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+                <input type="number" value={form.lowStockAt} onChange={(e) => setForm({ ...form, lowStockAt: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" min={0} />
               </div>
             </div>
           </div>
@@ -216,6 +270,9 @@ export default function MenuPage() {
               <th className="text-right px-4 py-3 font-semibold text-zinc-800">Aksi</th>
             </tr>
           </thead>
+          {items.length === 0 ? (
+            <tbody><tr><td colSpan={6} className="text-center text-zinc-400 py-10 text-sm">Belum ada menu. Tambah item baru untuk memulai.</td></tr></tbody>
+          ) : (
           <tbody className="divide-y divide-zinc-100">
             {items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())).map((item) => (
               <tr key={item.id} className="hover:bg-zinc-50">
@@ -241,7 +298,8 @@ export default function MenuPage() {
                 <td className="px-4 py-3 text-right">
                   {staff?.role === "admin" ? (
                     <>
-                      <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold mr-2">Edit</button>
+                      <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold">Edit</button>
+                      <span className="text-zinc-300 mx-1">|</span>
                       <button onClick={() => setDeleteTarget(item)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
                     </>
                   ) : <span className="text-zinc-300 text-xs">-</span>}
@@ -249,6 +307,7 @@ export default function MenuPage() {
               </tr>
             ))}
           </tbody>
+          )}
         </table>
       </div>
     </div>
@@ -270,6 +329,60 @@ export default function MenuPage() {
           </div>
         )}
       </ConfirmDialog>
+
+      {showCatModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowCatModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <h2 className="font-semibold text-zinc-800">Kelola Kategori</h2>
+              <button onClick={() => setShowCatModal(false)} className="text-zinc-400 hover:text-zinc-600 text-lg">&times;</button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCat()}
+                placeholder="Nama kategori baru"
+                className="flex-1 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white"
+              />
+              <button onClick={addCat} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700">Tambah</button>
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {categories.length === 0 ? (
+                <p className="text-sm text-zinc-400 text-center py-4">Belum ada kategori</p>
+              ) : categories.map((cat, i) => (
+                <div key={cat.id} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-zinc-50">
+                  <div className="flex flex-col">
+                    <button onClick={() => moveCatSort(cat.id, -1)} disabled={i === 0} className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 text-xs leading-none">&uarr;</button>
+                    <button onClick={() => moveCatSort(cat.id, 1)} disabled={i === categories.length - 1} className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 text-xs leading-none">&darr;</button>
+                  </div>
+                  {editingCatId === cat.id ? (
+                    <input
+                      value={editingCatName}
+                      onChange={(e) => setEditingCatName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && renameCat(cat.id)}
+                      onBlur={() => renameCat(cat.id)}
+                      className="flex-1 px-2 py-1 rounded-lg border border-zinc-300 text-sm text-zinc-800 bg-white"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="flex-1 text-sm text-zinc-800">{cat.name}</span>
+                  )}
+                  <button
+                    onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }}
+                    className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                  >
+                    Rename
+                  </button>
+                  <button onClick={() => removeCat(cat.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

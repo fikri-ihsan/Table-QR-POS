@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 
 type Order = {
-  id: string; orderNumber: number; status: string; type: string;
+  id: string; ref: string; orderNumber: number; status: string; type: string;
   customerName: string | null; total: number; paymentStatus: string;
   createdAt: string; table: { number: number } | null;
   items: { id: string; menuItem: { name: string }; quantity: number; price: number }[];
@@ -15,21 +15,40 @@ const statusLabels: Record<string, string> = {
   received: "Diterima", preparing: "Dimasak", ready: "Siap", delivered: "Diantar", cancelled: "Batal",
 };
 
+const filterTabs = [
+  { key: "all", label: "Semua" },
+  { key: "active", label: "Aktif" },
+  { key: "delivered", label: "Selesai" },
+  { key: "cancelled", label: "Batal" },
+];
+
+const activeStatuses = ["received", "preparing", "ready"];
+
 export default function OrdersPage() {
   const { staff, loading: authLoading } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [refundTarget, setRefundTarget] = useState<Order | null>(null);
+  const [refundMode, setRefundMode] = useState<"full" | "partial">("full");
+  const [refundSelection, setRefundSelection] = useState<Record<string, number>>({});
+  const [refunding, setRefunding] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const loadOrders = async () => {
     if (staff?.role === "kitchen") { router.push("/kitchen"); return; }
     setLoading(true);
     try {
-      const r = await fetch("/api/orders");
+      const r = await fetch("/api/orders?take=20");
       if (r.ok) {
-        setOrders(await r.json());
+        const { orders: data, hasMore: more } = await r.json();
+        setOrders(data);
+        setHasMore(more);
       }
     } catch (e) {
       console.error("Gagal load orders:", e);
@@ -37,6 +56,24 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || orders.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const cursor = orders[orders.length - 1].id;
+      const r = await fetch(`/api/orders?take=20&cursor=${cursor}`);
+      if (r.ok) {
+        const { orders: data, hasMore: more } = await r.json();
+        setOrders((prev) => [...prev, ...data]);
+        setHasMore(more);
+      }
+    } catch (e) {
+      console.error("Gagal load more:", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, orders]);
 
   useEffect(() => {
     if (!staff) return;
@@ -61,25 +98,58 @@ export default function OrdersPage() {
     return () => evt.close();
   }, [staff]);
 
-  const updateStatus = async (id: string, status: string) => {
-    if (staff?.role === "kitchen") { router.push("/kitchen"); return; }
-    await fetch(`/api/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    loadOrders();
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  const openRefund = (order: Order) => {
+    setRefundTarget(order);
+    setRefundMode("full");
+    setRefundSelection({});
   };
 
-  if (authLoading || loading) return <div className="p-8 text-center text-zinc-500">Loading...</div>;
+  const handleRefund = async () => {
+    if (!refundTarget) return;
+    setRefunding(true);
+    try {
+      const body = refundMode === "partial"
+        ? { items: Object.entries(refundSelection).filter(([, qty]) => qty > 0).map(([id, qty]) => ({ id, qty })) }
+        : {};
+      await fetch(`/api/orders/${refundTarget.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      loadOrders();
+    } catch (e) {
+      console.error("Refund gagal:", e);
+    } finally {
+      setRefunding(false);
+      setRefundTarget(null);
+    }
+  };
 
-  const filtered = (filter === "all" ? orders : orders.filter((o) => o.status === filter))
+  if (authLoading || loading) return (
+    <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="animate-spin w-8 h-8 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+    </div>
+  );
+
+  const filtered = (filter === "all" ? orders : filter === "active" ? orders.filter((o) => activeStatuses.includes(o.status)) : orders.filter((o) => o.status === filter))
     .filter((o) =>
       o.orderNumber.toString().includes(search) ||
+      (o.ref || "").toLowerCase().includes(search.toLowerCase()) ||
       (o.customerName || "").toLowerCase().includes(search.toLowerCase())
     );
 
   return (
+    <>
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-zinc-800">Pesanan</h1>
@@ -87,17 +157,22 @@ export default function OrdersPage() {
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto">
-        {[{ key: "all", label: "Semua" }, ...Object.entries(statusLabels).map(([key, label]) => ({ key, label }))].map((f) => (
+        {filterTabs.map((f) => (
           <button key={f.key} onClick={() => setFilter(f.key)} className={`px-4 py-1.5 rounded-full text-xs whitespace-nowrap ${filter === f.key ? "bg-violet-600 text-white" : "bg-white border border-zinc-300 text-zinc-700"}`}>{f.label}</button>
         ))}
       </div>
 
       <div className="space-y-3">
         {filtered.map((order) => (
-          <div key={order.id} className="bg-white rounded-2xl p-5 border border-zinc-200">
+          <div
+            key={order.id}
+            className="bg-white rounded-2xl p-5 border border-zinc-200 cursor-pointer"
+            onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+          >
             <div className="flex justify-between items-start mb-3">
               <div>
                 <span className="font-bold text-zinc-800">#{order.orderNumber}</span>
+                {order.ref && <span className="ml-2 text-[10px] text-zinc-400 font-mono">· {order.ref}</span>}
                 <span className="ml-3 text-xs text-zinc-500">{order.table ? `Meja ${order.table.number}` : "Takeaway"}</span>
                 <span className="ml-2 text-xs text-zinc-500">{order.customerName}</span>
               </div>
@@ -105,8 +180,8 @@ export default function OrdersPage() {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusLabels[order.status] ? "bg-violet-100 text-violet-700" : ""}`}>
                   {statusLabels[order.status] || order.status}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${order.paymentStatus === "paid" ? "bg-green-100 text-green-700" : order.paymentStatus === "failed" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
-                  {order.paymentStatus === "paid" ? "Lunas" : order.paymentStatus === "failed" ? "Gagal" : "Pending"}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${order.paymentStatus === "paid" ? "bg-green-100 text-green-700" : order.paymentStatus === "failed" ? "bg-red-100 text-red-700" : order.paymentStatus === "refunded" ? "bg-zinc-100 text-zinc-500" : "bg-yellow-100 text-yellow-700"}`}>
+                  {order.paymentStatus === "paid" ? "Lunas" : order.paymentStatus === "failed" ? "Gagal" : order.paymentStatus === "refunded" ? "Refund" : "Pending"}
                 </span>
               </div>
             </div>
@@ -122,17 +197,72 @@ export default function OrdersPage() {
 
             <div className="flex justify-between items-center pt-3 border-t border-zinc-100">
               <span className="font-bold text-sm text-zinc-800">Rp {order.total.toLocaleString("id-ID")}</span>
-              <div className="flex gap-1">
-                {order.paymentStatus === "paid" && order.status === "received" && <button onClick={() => updateStatus(order.id, "preparing")} className="px-3 py-1 rounded-lg bg-amber-500 text-white text-xs">Masak</button>}
-                {order.paymentStatus === "paid" && order.status === "preparing" && <button onClick={() => updateStatus(order.id, "ready")} className="px-3 py-1 rounded-lg bg-green-500 text-white text-xs">Siap</button>}
-                {order.paymentStatus === "paid" && order.status === "ready" && <button onClick={() => updateStatus(order.id, "delivered")} className="px-3 py-1 rounded-lg bg-blue-500 text-white text-xs">Antar</button>}
-                {order.paymentStatus !== "paid" && <button onClick={() => updateStatus(order.id, "cancelled")} className="px-3 py-1 rounded-lg border border-red-300 text-red-600 text-xs">{order.paymentStatus === "failed" ? "Batal" : "Batalkan"}</button>}
-              </div>
+              {expandedId === order.id && order.paymentStatus === "paid" && staff?.role === "admin" && (
+                <button onClick={(e) => { e.stopPropagation(); openRefund(order); }} className="px-3 py-1 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50">Refund</button>
+              )}
             </div>
           </div>
         ))}
-        {filtered.length === 0 && <p className="text-center text-zinc-500 py-10">Tidak ada pesanan</p>}
+        {filtered.length === 0 && !loading && (
+          <div className="text-center py-16">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
+              <span className="text-lg text-zinc-400">📋</span>
+            </div>
+            <p className="text-sm text-zinc-400">Tidak ada pesanan</p>
+          </div>
+        )}
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin w-6 h-6 border-2 border-zinc-300 border-t-violet-600 rounded-full" />
+          </div>
+        )}
+        <div ref={sentinelRef} />
       </div>
     </div>
+
+      {refundTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !refunding && setRefundTarget(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-semibold text-zinc-800">Refund #{refundTarget.orderNumber}</h2>
+
+            <div className="flex gap-2">
+              <button onClick={() => setRefundMode("full")} className={`flex-1 py-2 rounded-xl text-sm ${refundMode === "full" ? "bg-red-600 text-white" : "border border-zinc-300 text-zinc-700"}`}>Full Refund</button>
+              <button onClick={() => setRefundMode("partial")} className={`flex-1 py-2 rounded-xl text-sm ${refundMode === "partial" ? "bg-red-600 text-white" : "border border-zinc-300 text-zinc-700"}`}>Partial</button>
+            </div>
+
+            {refundMode === "full" ? (
+              <p className="text-sm text-zinc-600">Semua item akan direfund. Stok dikembalikan. Pesanan dibatalkan.</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {refundTarget.items.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between text-sm">
+                    <span className="text-zinc-700">{item.quantity}x {item.menuItem.name}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setRefundSelection((prev) => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))} className="w-7 h-7 rounded-full border border-zinc-300">-</button>
+                      <span className="w-5 text-center font-medium">{refundSelection[item.id] || 0}</span>
+                      <button onClick={() => setRefundSelection((prev) => ({ ...prev, [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1) }))} className="w-7 h-7 rounded-full border border-zinc-300">+</button>
+                    </div>
+                  </div>
+                ))}
+                {Object.values(refundSelection).every((v) => !v) && (
+                  <p className="text-xs text-zinc-400 text-center pt-2">Pilih item untuk direfund</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setRefundTarget(null)} disabled={refunding} className="px-4 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-700">Batal</button>
+              <button
+                onClick={handleRefund}
+                disabled={refunding || (refundMode === "partial" && Object.values(refundSelection).every((v) => !v))}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-40"
+              >
+                {refunding ? "Memproses..." : "Refund"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
