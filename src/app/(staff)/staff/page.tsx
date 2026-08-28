@@ -106,7 +106,7 @@ export default function StaffPage() {
 
       {showForm && (
         <div className="bg-white border border-zinc-200 rounded-2xl p-4 mb-6 flex gap-3 items-end">
-          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-40" required /></div>
+          <div><label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-40" required autoFocus /></div>
           <div><label className="text-xs font-medium text-zinc-700 block mb-1">PIN</label><input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white w-32" required /></div>
           <div><label className="text-xs font-medium text-zinc-700 block mb-1">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white">
             <option value="cashier">Kasir</option><option value="kitchen">Dapur</option><option value="admin">Admin</option>
@@ -161,7 +161,7 @@ export default function StaffPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-medium text-zinc-700 block mb-1">Nama</label>
-                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" autoFocus />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-700 block mb-1">Role</label>

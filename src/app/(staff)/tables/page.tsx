@@ -105,7 +105,7 @@ export default function TablesPage() {
         <div className="bg-white border border-zinc-200 rounded-2xl p-6 mb-6 flex gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-zinc-800 mb-1">Nomor Meja</label>
-            <input type="number" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} className="w-32 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required />
+            <input type="number" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} className="w-32 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required autoFocus />
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-800 mb-1">Kapasitas</label>

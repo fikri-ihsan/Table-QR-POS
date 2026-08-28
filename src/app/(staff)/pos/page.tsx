@@ -35,6 +35,7 @@ export default function POSPage() {
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [cashModal, setCashModal] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
+  const [checkingOut, setCheckingOut] = useState(false);
 
   useEffect(() => {
     if (!staff) return;
@@ -117,7 +118,9 @@ export default function POSPage() {
     : items.filter((i) => i.category.name === selectedCat && i.available);
 
   const handleCheckout = async (paymentMethod: string) => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || checkingOut) return;
+    setCheckingOut(true);
+    try {
     const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -209,6 +212,7 @@ export default function POSPage() {
         setToastType("error");
       }
     }
+    } finally { setCheckingOut(false); }
   };
 
   const categories = ["Semua", ...new Set(items.map((i) => i.category.name))];
@@ -272,8 +276,8 @@ export default function POSPage() {
           {lastOrderNumber > 0 ? <span>Pesanan Terakhir: #{lastOrderNumber}</span> : todayCount > 0 && <span>Pesanan #{todayCount + 1}</span>}
         </div>
         <div className="space-y-2">
-          <button onClick={() => setCashModal(true)} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-green-600 text-white text-base font-semibold disabled:opacity-40">Tunai</button>
-          <button onClick={() => handleCheckout("qris")} disabled={cart.length === 0} className="w-full py-4 rounded-xl bg-blue-600 text-white text-base font-semibold disabled:opacity-40">QRIS</button>
+          <button onClick={() => setCashModal(true)} disabled={cart.length === 0 || checkingOut} className="w-full py-4 rounded-xl bg-green-600 text-white text-base font-semibold disabled:opacity-40">{checkingOut ? "Memproses..." : "Tunai"}</button>
+              <button onClick={() => handleCheckout("qris")} disabled={cart.length === 0 || checkingOut} className="w-full py-4 rounded-xl bg-blue-600 text-white text-base font-semibold disabled:opacity-40">{checkingOut ? "Memproses..." : "QRIS"}</button>
         </div>
       </div>
     </>

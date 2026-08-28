@@ -221,7 +221,7 @@ export default function MenuPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Nama</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" required autoFocus />
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-800 mb-1">Harga (Rp)</label>
@@ -359,6 +359,7 @@ export default function MenuPage() {
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addCat()}
+                autoFocus
                 placeholder="Nama kategori baru"
                 className="flex-1 px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white"
               />

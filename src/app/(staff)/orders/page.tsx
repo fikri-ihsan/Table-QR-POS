@@ -35,7 +35,6 @@ export default function OrdersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [refundTarget, setRefundTarget] = useState<Order | null>(null);
   const [refundMode, setRefundMode] = useState<"full" | "partial">("full");
   const [refundSelection, setRefundSelection] = useState<Record<string, number>>({});
@@ -207,7 +206,7 @@ export default function OrdersPage() {
           <div
             key={order.id}
             className="bg-white rounded-2xl p-5 border border-zinc-200 cursor-pointer"
-            onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+            onClick={() => router.push(`/orders/${order.id}`)}
           >
             <div className="flex justify-between items-start mb-3">
               <div>
@@ -238,16 +237,14 @@ export default function OrdersPage() {
 
             <div className="flex justify-between items-center pt-3 border-t border-zinc-100">
               <span className="font-bold text-sm text-zinc-800">Rp {order.total.toLocaleString("id-ID")}</span>
-              {expandedId === order.id && (
-                <div className="flex gap-2">
-                  {order.paymentStatus === "paid" && (
-                    <button onClick={(e) => { e.stopPropagation(); handlePrint(order); }} className="px-3 py-2 rounded-lg border border-zinc-300 text-zinc-700 text-xs font-semibold hover:bg-zinc-50">Cetak Ulang</button>
-                  )}
-                  {order.paymentStatus === "paid" && staff?.role === "admin" && (
-                    <button onClick={(e) => { e.stopPropagation(); openRefund(order); }} className="px-3 py-2 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50">Refund</button>
-                  )}
-                </div>
-              )}
+              <div className="flex gap-2">
+                {order.paymentStatus === "paid" && (
+                  <button onClick={(e) => { e.stopPropagation(); router.push(`/orders/${order.id}`); }} className="px-3 py-2 rounded-lg border border-zinc-300 text-zinc-700 text-xs font-semibold hover:bg-zinc-50">Detail</button>
+                )}
+                {order.paymentStatus === "paid" && staff?.role === "admin" && (
+                  <button onClick={(e) => { e.stopPropagation(); openRefund(order); }} className="px-3 py-2 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50">Refund</button>
+                )}
+              </div>
             </div>
           </div>
         ))}

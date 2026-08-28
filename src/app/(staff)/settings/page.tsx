@@ -10,6 +10,7 @@ export default function SettingsPage() {
   const [outletId, setOutletId] = useState("");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [taxRate, setTaxRate] = useState(10);
   const [taxLabel, setTaxLabel] = useState("Pajak");
@@ -28,6 +29,7 @@ export default function SettingsPage() {
         setOutletId(o.id);
         setName(o.name);
         setAddress(o.address || "");
+        setPhone(o.phone || "");
         setTaxEnabled(o.taxEnabled ?? false);
         setTaxRate(o.taxRate ?? 10);
         setTaxLabel(o.taxLabel || "Pajak");
@@ -44,7 +46,7 @@ export default function SettingsPage() {
     await fetch(`/api/outlets/${outletId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, address, taxEnabled, taxRate: Number(taxRate), taxLabel, serviceEnabled, serviceRate: Number(serviceRate), serviceLabel }),
+      body: JSON.stringify({ name, address, phone, taxEnabled, taxRate: Number(taxRate), taxLabel, serviceEnabled, serviceRate: Number(serviceRate), serviceLabel }),
     });
     setSaving(false);
     setSaved(true);
@@ -76,6 +78,10 @@ export default function SettingsPage() {
           <div>
             <label className="block text-xs font-medium text-zinc-700 mb-1">Alamat</label>
             <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white resize-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 mb-1">Nomor Telepon</label>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-zinc-300 text-sm text-zinc-800 bg-white" />
           </div>
         </div>
 
