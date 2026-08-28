@@ -3,11 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ponytail: SQLite single-file. Swap to PostgreSQL when multi-server writes needed.
 
 model Outlet {
   id             String   @id @default(cuid())

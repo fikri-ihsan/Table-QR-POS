@@ -1,7 +1,14 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 const p = new PrismaClient();
 
-const [outlet] = await p.outlet.findMany();
+let outlet = await p.outlet.findFirst();
+if (!outlet) {
+  outlet = await p.outlet.create({ data: { name: "Saji Coffee & Eatery", taxEnabled: true, taxRate: 10, taxLabel: "Pajak", serviceEnabled: false, serviceRate: 5, serviceLabel: "Service" } });
+  const pin = await bcrypt.hash("123456", 12);
+  await p.staff.create({ data: { outletId: outlet.id, name: "Admin", pin, role: "admin" } });
+  console.log("CREATED outlet + admin (PIN 123456)");
+}
 const oid = outlet.id;
 
 const CATS = ["Kopi", "Non-Kopi", "Dessert"]; // keep existing Minuman & Makanan too
